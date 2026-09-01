@@ -1,0 +1,11 @@
+{
+  "name": "nightshade-dark-mode",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A local Chrome extension that adds reversible dark mode to websites.",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test"
+  }
+}

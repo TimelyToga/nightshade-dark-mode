@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Nightshade</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="mark" aria-hidden="true">◐</div>
+        <div>
+          <h1>Nightshade</h1>
+          <p>Dark mode, where it is missing.</p>
+        </div>
+      </header>
+
+      <section id="site-panel" hidden>
+        <p class="eyebrow">CURRENT SITE</p>
+        <p class="site-name" id="site-name"></p>
+
+        <label class="switch-row">
+          <span>Use dark mode here</span>
+          <input id="site-enabled" type="checkbox" />
+          <span class="switch" aria-hidden="true"></span>
+        </label>
+
+        <label class="range-row" for="dim">
+          <span>Extra dimming <output id="dim-value">10%</output></span>
+          <input id="dim" type="range" min="0" max="55" step="1" />
+        </label>
+
+        <label class="check-row">
+          <input id="preserve-media" type="checkbox" />
+          <span>Preserve photo and video colors</span>
+        </label>
+
+        <button id="reset-site" class="text-button" type="button">Reset this site to the default</button>
+      </section>
+
+      <section class="global-panel">
+        <label class="switch-row">
+          <span>Default dark mode everywhere</span>
+          <input id="global-enabled" type="checkbox" />
+          <span class="switch" aria-hidden="true"></span>
+        </label>
+      </section>
+
+      <p id="status" class="status" role="status"></p>
+
+      <details>
+        <summary>Quick fixes when a site looks wrong</summary>
+        <ul>
+          <li>Turn this site off if it already has a good dark mode.</li>
+          <li>Untick photo preservation if a bright image is still distracting.</li>
+          <li>Use less dimming for video, maps, or color-sensitive work.</li>
+          <li>Refresh once after installing if this tab does not change.</li>
+        </ul>
+      </details>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

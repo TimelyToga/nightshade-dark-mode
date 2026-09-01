@@ -1,0 +1,50 @@
+/*
+ * The temporary selector prevents a white flash before synced settings arrive.
+ * It is removed for sites that are explicitly turned off.
+ */
+:root:not([data-nightshade-ready]),
+:root[data-nightshade-active="true"] {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
+/*
+ * Keep the no-flash background separate so JS can briefly reveal and inspect
+ * the page author's root background when detecting an existing dark theme.
+ */
+:root:not([data-nightshade-ready]):not([data-nightshade-detecting-native-dark="true"]),
+:root[data-nightshade-active="true"]:not([data-nightshade-detecting-native-dark="true"]) {
+  background: #111 !important;
+  color-scheme: light !important;
+}
+
+/* Undo the document inversion for content that normally has its own colors. */
+:root:not([data-nightshade-ready]) img,
+:root:not([data-nightshade-ready]) video,
+:root:not([data-nightshade-ready]) canvas,
+:root:not([data-nightshade-ready]) svg,
+:root:not([data-nightshade-ready]) object,
+:root:not([data-nightshade-ready]) embed,
+:root[data-nightshade-active="true"][data-nightshade-preserve-media="true"] img,
+:root[data-nightshade-active="true"][data-nightshade-preserve-media="true"] video,
+:root[data-nightshade-active="true"][data-nightshade-preserve-media="true"] canvas,
+:root[data-nightshade-active="true"][data-nightshade-preserve-media="true"] svg,
+:root[data-nightshade-active="true"][data-nightshade-preserve-media="true"] object,
+:root[data-nightshade-active="true"][data-nightshade-preserve-media="true"] embed {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
+/* The page root is inverted, so this child is inverted again to stay black. */
+#nightshade-extension-overlay {
+  display: none;
+  position: fixed;
+  z-index: 2147483647;
+  inset: 0;
+  pointer-events: none;
+  background: #000;
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
+:root[data-nightshade-active="true"] #nightshade-extension-overlay {
+  display: block;
+  opacity: var(--nightshade-dim, 0.1);
+}

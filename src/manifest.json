@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Nightshade — Dark Mode Anywhere",
+  "version": "0.1.0",
+  "description": "A gentle, reversible dark mode for websites that do not provide one.",
+  "permissions": ["storage", "activeTab"],
+  "action": {
+    "default_title": "Nightshade",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "css": ["content.css"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "match_origin_as_fallback": true
+    }
+  ]
+}
