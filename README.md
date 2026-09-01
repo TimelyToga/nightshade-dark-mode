@@ -2,6 +2,14 @@
 
 Nightshade is a small Manifest V3 Chrome extension that gives light-only websites a reversible dark mode. It skips sites that already expose a dark root or body background, supports per-site overrides, preserves media colors by default, and offers optional extra dimming.
 
+## Effect
+
+| Light-only page | Nightshade enabled |
+| --- | --- |
+| ![Representative productivity page before Nightshade](docs/screenshots/nightshade-before.png) | ![The same page with Nightshade enabled](docs/screenshots/nightshade-after.png) |
+
+These screenshots use the same inversion and 10% dimming applied by the extension on a representative light-only page. Native dark pages are detected and left unchanged.
+
 ## Build and load
 
 ```sh
