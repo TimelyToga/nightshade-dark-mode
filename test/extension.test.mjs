@@ -51,6 +51,19 @@ test("project and manifest versions are 0.1.0", () => {
   assert.equal(manifest.version, "0.1.0");
 });
 
+test("manifest exposes correctly sized Chrome icons", () => {
+  const expected = { 16: "icons/icon16.png", 32: "icons/icon32.png", 48: "icons/icon48.png", 128: "icons/icon128.png" };
+  assert.deepEqual(manifest.icons, expected);
+  assert.deepEqual(manifest.action.default_icon, { 16: expected[16], 32: expected[32] });
+
+  for (const [size, relativePath] of Object.entries(expected)) {
+    const png = fs.readFileSync(new URL(`../src/${relativePath}`, import.meta.url));
+    assert.deepEqual([...png.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
+    assert.equal(png.readUInt32BE(16), Number(size));
+    assert.equal(png.readUInt32BE(20), Number(size));
+  }
+});
+
 test("light pages receive Nightshade", async () => {
   const result = await renderWithPageColors({
     bodyColor: "rgb(255, 255, 255)",

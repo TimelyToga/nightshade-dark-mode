@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { copyFile, mkdir, readdir, readFile, rm } from "node:fs/promises";
+import { cp, mkdir, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -15,12 +15,8 @@ if (manifest.version !== "0.1.0") throw new Error("Manifest version must match p
 
 await rm(unpackedDirectory, { recursive: true, force: true });
 await rm(zipPath, { force: true });
-await mkdir(unpackedDirectory, { recursive: true });
-
-for (const entry of await readdir(sourceDirectory, { withFileTypes: true })) {
-  if (!entry.isFile()) throw new Error(`Unexpected non-file in src/: ${entry.name}`);
-  await copyFile(path.join(sourceDirectory, entry.name), path.join(unpackedDirectory, entry.name));
-}
+await mkdir(distDirectory, { recursive: true });
+await cp(sourceDirectory, unpackedDirectory, { recursive: true });
 
 const zip = spawnSync("zip", ["-qr", path.basename(zipPath), path.basename(unpackedDirectory)], {
   cwd: distDirectory,

@@ -1,5 +1,9 @@
 # Nightshade — Dark Mode Anywhere
 
+<p align="center">
+  <img src="design/logo-concepts/eclipse-leaf-corona-beam.png" alt="Nightshade eclipse-and-leaf logo" width="160">
+</p>
+
 Nightshade is a small Manifest V3 Chrome extension that gives light-only websites a reversible dark mode. It skips sites that already expose a dark root or body background, supports per-site overrides, preserves media colors by default, and offers optional extra dimming.
 
 ## Effect
