@@ -13,7 +13,9 @@
  */
 :root:not([data-nightshade-ready]):not([data-nightshade-detecting-native-dark="true"]),
 :root[data-nightshade-active="true"]:not([data-nightshade-detecting-native-dark="true"]) {
-  background: #111 !important;
+  /* This color is inverted with the root. A light source color produces dark
+     gutters on transparent-body pages such as Hacker News. */
+  background: #eee !important;
   color-scheme: light !important;
 }
 

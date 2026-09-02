@@ -43,7 +43,7 @@ section {
 }
 
 #site-panel { padding: 14px; }
-.global-panel { margin-top: 10px; padding: 1px 14px; }
+.global-panel { margin-top: 10px; padding: 1px 14px 12px; }
 
 .eyebrow {
   margin: 0;
@@ -99,6 +99,37 @@ input[type="checkbox"] { accent-color: #8eacff; }
 .range-row span { display: flex; justify-content: space-between; margin-bottom: 8px; }
 output { color: #aebfff; font-variant-numeric: tabular-nums; }
 input[type="range"] { width: 100%; accent-color: #8eacff; }
+
+.pause-control {
+  padding-top: 2px;
+  border-top: 1px solid #2d3440;
+}
+
+.pause-actions { display: flex; align-items: center; gap: 7px; }
+
+.primary-button {
+  padding: 7px 10px;
+  border: 1px solid #7597ee;
+  border-radius: 6px;
+  background: #5878c9;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+
+.primary-button:hover, .primary-button:focus-visible { background: #6a8be0; }
+
+.pause-actions .text-button { margin: 0; }
+
+.pause-until {
+  margin: 8px 0 0;
+  color: #aebfff;
+  font-size: 11px;
+}
+
+#site-panel.paused { opacity: 0.55; }
+#site-panel.paused input, #site-panel.paused button { cursor: not-allowed; }
 
 .check-row { padding: 9px 0 8px; color: #d9dde5; font-size: 12px; }
 .check-row input { width: 15px; height: 15px; }

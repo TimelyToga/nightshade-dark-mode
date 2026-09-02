@@ -1,15 +1,23 @@
 const DEFAULTS = {
   globalEnabled: true,
+  disabledUntil: 0,
   dim: 10,
   preserveMedia: true,
   sites: {}
 };
+
+const PAUSE_OPTIONS = [15, 30, 60, 120, 240, 480, 1440];
 
 const elements = {
   sitePanel: document.getElementById("site-panel"),
   siteName: document.getElementById("site-name"),
   siteEnabled: document.getElementById("site-enabled"),
   globalEnabled: document.getElementById("global-enabled"),
+  pauseDuration: document.getElementById("pause-duration"),
+  pauseDurationValue: document.getElementById("pause-duration-value"),
+  pauseGlobal: document.getElementById("pause-global"),
+  resumeGlobal: document.getElementById("resume-global"),
+  pauseUntil: document.getElementById("pause-until"),
   dim: document.getElementById("dim"),
   dimValue: document.getElementById("dim-value"),
   preserveMedia: document.getElementById("preserve-media"),
@@ -27,6 +35,9 @@ function clampDim(value) {
 function normalize(raw) {
   return {
     globalEnabled: typeof raw.globalEnabled === "boolean" ? raw.globalEnabled : DEFAULTS.globalEnabled,
+    disabledUntil: Number.isFinite(Number(raw.disabledUntil))
+      ? Math.max(0, Number(raw.disabledUntil))
+      : DEFAULTS.disabledUntil,
     dim: clampDim(raw.dim),
     preserveMedia: typeof raw.preserveMedia === "boolean" ? raw.preserveMedia : DEFAULTS.preserveMedia,
     sites: raw.sites && typeof raw.sites === "object" ? raw.sites : {}
@@ -47,9 +58,46 @@ function effectiveSettings() {
   };
 }
 
+function pauseMinutes() {
+  return PAUSE_OPTIONS[Number(elements.pauseDuration.value)] || 60;
+}
+
+function formatDuration(minutes) {
+  if (minutes < 60) return `${minutes} min`;
+  if (minutes === 60) return "1 hour";
+  if (minutes < 1440) return `${minutes / 60} hours`;
+  return "24 hours";
+}
+
+function isPaused() {
+  return state.settings.disabledUntil > Date.now();
+}
+
+function renderPause() {
+  const duration = formatDuration(pauseMinutes());
+  const paused = isPaused();
+  elements.pauseDurationValue.value = duration;
+  elements.pauseDurationValue.textContent = duration;
+  elements.pauseGlobal.textContent = `${paused ? "Extend pause by" : "Pause for"} ${duration}`;
+  elements.resumeGlobal.hidden = !paused;
+  elements.pauseUntil.hidden = !paused;
+
+  if (paused) {
+    const until = new Intl.DateTimeFormat([], { hour: "numeric", minute: "2-digit" })
+      .format(state.settings.disabledUntil);
+    elements.pauseUntil.textContent = `Paused on every site until ${until}.`;
+  }
+
+  for (const control of [elements.siteEnabled, elements.dim, elements.preserveMedia, elements.resetSite]) {
+    control.disabled = paused;
+  }
+  elements.sitePanel.classList.toggle("paused", paused);
+}
+
 function render() {
   const effective = effectiveSettings();
   elements.globalEnabled.checked = state.settings.globalEnabled;
+  renderPause();
   if (!state.hostname) return;
 
   elements.siteEnabled.checked = effective.enabled;
@@ -77,6 +125,10 @@ async function checkPageConnection() {
       setStatus("This site already has a dark theme, so Nightshade left it alone. Turn the switch on to force it.");
       return;
     }
+    if (response?.pausedUntil) {
+      setStatus("Nightshade is temporarily paused everywhere.");
+      return;
+    }
     setStatus("Changes apply immediately in this tab.");
   } catch {
     setStatus("Refresh this tab once after installing to apply Nightshade.", true);
@@ -92,6 +144,22 @@ elements.globalEnabled.addEventListener("change", async () => {
   state.settings.globalEnabled = elements.globalEnabled.checked;
   await save();
   setStatus(elements.globalEnabled.checked ? "Default dark mode is on." : "Default dark mode is off.");
+});
+
+elements.pauseDuration.addEventListener("input", renderPause);
+
+elements.pauseGlobal.addEventListener("click", async () => {
+  const minutes = pauseMinutes();
+  const start = Math.max(Date.now(), state.settings.disabledUntil);
+  state.settings.disabledUntil = start + minutes * 60 * 1000;
+  await save();
+  setStatus(`Nightshade is paused everywhere for ${formatDuration(minutes)}.`);
+});
+
+elements.resumeGlobal.addEventListener("click", async () => {
+  state.settings.disabledUntil = 0;
+  await save();
+  setStatus("Nightshade resumed everywhere.");
 });
 
 elements.siteEnabled.addEventListener("change", async () => {
@@ -141,6 +209,7 @@ async function initialize() {
   const supported = url && ["http:", "https:", "file:"].includes(url.protocol);
   if (!supported) {
     elements.globalEnabled.checked = state.settings.globalEnabled;
+    renderPause();
     setStatus("Chrome and extension pages cannot be recolored. Open a regular website to change its site setting.", true);
     return;
   }
@@ -153,3 +222,12 @@ async function initialize() {
 }
 
 initialize().catch(() => setStatus("Nightshade could not read this tab.", true));
+
+setInterval(() => {
+  if (state.settings.disabledUntil && !isPaused()) {
+    state.settings.disabledUntil = 0;
+    render();
+  } else if (isPaused()) {
+    renderPause();
+  }
+}, 30000);

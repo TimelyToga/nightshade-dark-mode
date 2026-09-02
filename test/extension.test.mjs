@@ -4,9 +4,16 @@ import test from "node:test";
 import vm from "node:vm";
 
 const contentScript = fs.readFileSync(new URL("../src/content.js", import.meta.url), "utf8");
+const contentStyles = fs.readFileSync(new URL("../src/content.css", import.meta.url), "utf8");
+const popupMarkup = fs.readFileSync(new URL("../src/popup.html", import.meta.url), "utf8");
 const manifest = JSON.parse(fs.readFileSync(new URL("../src/manifest.json", import.meta.url), "utf8"));
 
-async function renderWithPageColors({ bodyColor, rootColor, rootColorScheme = "normal" }) {
+async function renderWithPageColors({
+  bodyColor,
+  rootColor,
+  rootColorScheme = "normal",
+  settings = { globalEnabled: true, disabledUntil: 0, dim: 10, preserveMedia: true, sites: {} }
+}) {
   const root = {
     dataset: {},
     style: { setProperty() {} },
@@ -17,7 +24,7 @@ async function renderWithPageColors({ bodyColor, rootColor, rootColorScheme = "n
     chrome: {
       storage: {
         sync: {
-          get: async () => ({ globalEnabled: true, dim: 10, preserveMedia: true, sites: {} })
+          get: async () => settings
         },
         onChanged: { addListener() {} }
       },
@@ -64,6 +71,16 @@ test("manifest exposes correctly sized Chrome icons", () => {
   }
 });
 
+test("popup offers a timed global pause slider", () => {
+  assert.match(popupMarkup, /id="pause-duration" type="range"/);
+  assert.match(popupMarkup, /id="pause-global"/);
+  assert.match(popupMarkup, /id="resume-global"/);
+});
+
+test("transparent page gutters become dark after root inversion", () => {
+  assert.match(contentStyles, /background: #eee !important;/);
+});
+
 test("light pages receive Nightshade", async () => {
   const result = await renderWithPageColors({
     bodyColor: "rgb(255, 255, 255)",
@@ -98,4 +115,36 @@ test("author-declared dark color schemes are skipped", async () => {
     rootColorScheme: "dark"
   });
   assert.equal(result.nightshadeActive, "false");
+});
+
+test("a timed global pause overrides an explicit site enable", async () => {
+  const result = await renderWithPageColors({
+    bodyColor: "rgb(255, 255, 255)",
+    rootColor: "rgba(0, 0, 0, 0)",
+    settings: {
+      globalEnabled: true,
+      disabledUntil: Date.now() + 60_000,
+      dim: 10,
+      preserveMedia: true,
+      sites: { "example.test": { enabled: true } }
+    }
+  });
+  assert.equal(result.nightshadeActive, "false");
+  assert.equal(result.nightshadePaused, "true");
+});
+
+test("an expired global pause resumes automatically", async () => {
+  const result = await renderWithPageColors({
+    bodyColor: "rgb(255, 255, 255)",
+    rootColor: "rgba(0, 0, 0, 0)",
+    settings: {
+      globalEnabled: true,
+      disabledUntil: Date.now() - 1,
+      dim: 10,
+      preserveMedia: true,
+      sites: {}
+    }
+  });
+  assert.equal(result.nightshadeActive, "true");
+  assert.equal(result.nightshadePaused, "false");
 });

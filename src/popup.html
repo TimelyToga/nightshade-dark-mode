@@ -45,6 +45,18 @@
           <input id="global-enabled" type="checkbox" />
           <span class="switch" aria-hidden="true"></span>
         </label>
+
+        <div class="pause-control">
+          <label class="range-row" for="pause-duration">
+            <span>Pause everywhere <output id="pause-duration-value">1 hour</output></span>
+            <input id="pause-duration" type="range" min="0" max="6" step="1" value="2" />
+          </label>
+          <div class="pause-actions">
+            <button id="pause-global" class="primary-button" type="button">Pause for 1 hour</button>
+            <button id="resume-global" class="text-button" type="button" hidden>Resume now</button>
+          </div>
+          <p id="pause-until" class="pause-until" hidden></p>
+        </div>
       </section>
 
       <p id="status" class="status" role="status"></p>

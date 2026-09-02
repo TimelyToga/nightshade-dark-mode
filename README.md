@@ -4,7 +4,7 @@
   <img src="design/logo-concepts/eclipse-leaf-corona-beam.png" alt="Nightshade eclipse-and-leaf logo" width="160">
 </p>
 
-Nightshade is a small Manifest V3 Chrome extension that gives light-only websites a reversible dark mode. It skips sites that already expose a dark root or body background, supports per-site overrides, preserves media colors by default, and offers optional extra dimming.
+Nightshade is a small Manifest V3 Chrome extension that gives light-only websites a reversible dark mode. It skips sites that already expose a dark root or body background, supports per-site overrides, preserves media colors by default, offers optional extra dimming, and can pause itself everywhere for 15 minutes to 24 hours.
 
 ## Effect
 
@@ -39,11 +39,14 @@ Before keeping the filter, it inspects author-owned body and root backgrounds. A
 
 Settings use Chrome Sync storage. No browsing history, page content, or account data is collected or transmitted.
 
+The popup's pause slider is a hard global override, including for sites that were explicitly enabled. Open pages resume automatically when the timer expires, or immediately when **Resume now** is clicked.
+
 ## Common failure modes
 
 | Symptom | Smallest correction |
 | --- | --- |
 | A native dark site is inverted into a pale page | Nightshade should now auto-skip it. If a site uses an unusual transparent shell, turn it off for that hostname. |
+| A narrow page leaves bright outer gutters | Nightshade pre-inverts its fallback background so transparent layouts, including Hacker News, finish dark. |
 | A bright photo, video, chart, or map remains distracting | Disable **Preserve photo and video colors** or increase **Extra dimming**. |
 | A CSS background logo looks strange | Exclude the site; generic CSS cannot safely isolate every background image from its surrounding element. |
 | The extension seems unchanged after rebuilding | Reload the extension and then refresh the website tab. |
