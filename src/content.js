@@ -10,7 +10,7 @@ const root = document.documentElement;
 const hostname = location.protocol === "file:" ? "__nightshade_local_files__" : location.hostname;
 let currentSettings = DEFAULTS;
 let autoSkippedForNativeDarkMode = false;
-let nativeDarkCheckTimer;
+let nativeDarkCheckTimers = [];
 let globalResumeTimer;
 
 function clampDim(value) {
@@ -42,6 +42,7 @@ function settingsForThisSite(settings) {
 }
 
 function colorLuminance(color) {
+  if (typeof color !== "string") return null;
   const values = color.match(/rgba?\(([^)]+)\)/i)?.[1].split(",").map(Number);
   if (!values || values.length < 3 || (values[3] !== undefined && values[3] < 0.9)) return null;
 
@@ -50,6 +51,32 @@ function colorLuminance(color) {
     value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
   );
   return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+}
+
+function viewportSurfaceLuminances() {
+  if (typeof document.elementFromPoint !== "function") return [];
+
+  const width = Math.max(root.clientWidth || 0, window.innerWidth || 0);
+  const height = Math.max(root.clientHeight || 0, window.innerHeight || 0);
+  if (!width || !height) return [];
+
+  const luminances = [];
+  for (const yRatio of [0.15, 0.5, 0.85]) {
+    for (const xRatio of [0.1, 0.5, 0.9]) {
+      let element = document.elementFromPoint(width * xRatio, height * yRatio);
+      while (element && element !== root) {
+        if (element.id !== "nightshade-extension-overlay") {
+          const luminance = colorLuminance(getComputedStyle(element).backgroundColor);
+          if (luminance !== null) {
+            luminances.push(luminance);
+            break;
+          }
+        }
+        element = element.parentElement;
+      }
+    }
+  }
+  return luminances;
 }
 
 function pageAlreadyLooksDark() {
@@ -66,9 +93,14 @@ function pageAlreadyLooksDark() {
     const authorDeclaresDarkScheme = rootStyle.colorScheme
       .split(/\s+/)
       .includes("dark");
+    const surfaceLuminances = viewportSurfaceLuminances();
+    const sampledSurfaceLooksDark = surfaceLuminances.length >= 4 &&
+      surfaceLuminances.filter((luminance) => luminance < 0.22).length * 3 >=
+        surfaceLuminances.length * 2;
 
-    return authorDeclaresDarkScheme || [bodyLuminance, rootLuminance]
-      .some((luminance) => luminance !== null && luminance < 0.22);
+    return authorDeclaresDarkScheme || sampledSurfaceLooksDark ||
+      [bodyLuminance, rootLuminance]
+        .some((luminance) => luminance !== null && luminance < 0.22);
   } finally {
     delete root.dataset.nightshadeDetectingNativeDark;
   }
@@ -114,16 +146,18 @@ function checkForNativeDarkMode() {
 }
 
 function scheduleNativeDarkCheck() {
-  clearTimeout(nativeDarkCheckTimer);
+  for (const timer of nativeDarkCheckTimers) clearTimeout(timer);
+  nativeDarkCheckTimers = [];
   const checkSoon = () => requestAnimationFrame(checkForNativeDarkMode);
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", checkSoon, { once: true });
   } else {
     checkSoon();
   }
-  // Several homepages set their final theme immediately after they construct
-  // the body, so check once more after that small initialization window.
-  nativeDarkCheckTimer = setTimeout(checkForNativeDarkMode, 500);
+  // App-style pages often paint their real theme onto nested surfaces after
+  // the document is ready. Recheck during that initialization window.
+  nativeDarkCheckTimers = [500, 2000, 5000]
+    .map((delay) => setTimeout(checkForNativeDarkMode, delay));
 }
 
 function scheduleGlobalResume() {

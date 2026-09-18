@@ -12,14 +12,22 @@ async function renderWithPageColors({
   bodyColor,
   rootColor,
   rootColorScheme = "normal",
+  sampleColors = [],
+  delayedSampleColors = null,
   settings = { globalEnabled: true, disabledUntil: 0, dim: 10, preserveMedia: true, sites: {} }
 }) {
   const root = {
     dataset: {},
     style: { setProperty() {} },
-    appendChild() {}
+    appendChild() {},
+    clientWidth: 1000,
+    clientHeight: 800,
+    parentElement: null
   };
-  const body = {};
+  const body = { parentElement: root };
+  let currentSampleColors = sampleColors;
+  let sampleIndex = 0;
+  const timers = [];
   const context = {
     chrome: {
       storage: {
@@ -36,26 +44,40 @@ async function renderWithPageColors({
       readyState: "complete",
       getElementById: () => null,
       createElement: () => ({ setAttribute() {} }),
+      elementFromPoint: () => {
+        const backgroundColor = currentSampleColors[sampleIndex++];
+        return backgroundColor ? { backgroundColor, parentElement: body } : null;
+      },
       addEventListener() {}
     },
     location: { protocol: "https:", hostname: "example.test" },
     getComputedStyle: (element) => ({
-      backgroundColor: element === body ? bodyColor : rootColor,
+      backgroundColor: element.backgroundColor ?? (element === body ? bodyColor : rootColor),
       colorScheme: element === root ? rootColorScheme : "normal"
     }),
+    window: { innerWidth: 1000, innerHeight: 800 },
     requestAnimationFrame: (callback) => callback(),
-    setTimeout: () => 1,
+    setTimeout: (callback, delay) => {
+      timers.push({ callback, delay });
+      return timers.length;
+    },
     clearTimeout() {}
   };
 
   vm.runInNewContext(contentScript, context);
   await new Promise((resolve) => setImmediate(resolve));
+  if (delayedSampleColors) {
+    currentSampleColors = delayedSampleColors;
+    sampleIndex = 0;
+    timers.find(({ delay }) => delay === 2000)?.callback();
+  }
   return root.dataset;
 }
 
 test("project and manifest versions are 0.1.0", () => {
   assert.equal(manifest.manifest_version, 3);
   assert.equal(manifest.version, "0.1.0");
+  assert.equal(manifest.content_scripts[0].all_frames, false);
 });
 
 test("manifest exposes correctly sized Chrome icons", () => {
@@ -115,6 +137,57 @@ test("author-declared dark color schemes are skipped", async () => {
     rootColorScheme: "dark"
   });
   assert.equal(result.nightshadeActive, "false");
+});
+
+test("Gmail-style dark descendant surfaces are skipped", async () => {
+  const result = await renderWithPageColors({
+    bodyColor: "rgba(0, 0, 0, 0)",
+    rootColor: "rgba(0, 0, 0, 0)",
+    sampleColors: Array(9).fill("rgb(31, 31, 31)")
+  });
+  assert.equal(result.nightshadeActive, "false");
+  assert.equal(result.nightshadeAutoSkipped, "true");
+});
+
+test("a delayed Gmail-style dark shell is rechecked", async () => {
+  const result = await renderWithPageColors({
+    bodyColor: "rgba(0, 0, 0, 0)",
+    rootColor: "rgba(0, 0, 0, 0)",
+    sampleColors: Array(9).fill("rgb(246, 248, 252)"),
+    delayedSampleColors: Array(9).fill("rgb(31, 31, 31)")
+  });
+  assert.equal(result.nightshadeActive, "false");
+  assert.equal(result.nightshadeAutoSkipped, "true");
+});
+
+test("an explicit site enable still forces dark descendant surfaces", async () => {
+  const result = await renderWithPageColors({
+    bodyColor: "rgba(0, 0, 0, 0)",
+    rootColor: "rgba(0, 0, 0, 0)",
+    sampleColors: Array(9).fill("rgb(31, 31, 31)"),
+    settings: {
+      globalEnabled: true,
+      disabledUntil: 0,
+      dim: 10,
+      preserveMedia: true,
+      sites: { "example.test": { enabled: true } }
+    }
+  });
+  assert.equal(result.nightshadeActive, "true");
+  assert.equal(result.nightshadeAutoSkipped, "false");
+});
+
+test("a minority dark panel does not make a light app look native-dark", async () => {
+  const result = await renderWithPageColors({
+    bodyColor: "rgba(0, 0, 0, 0)",
+    rootColor: "rgba(0, 0, 0, 0)",
+    sampleColors: [
+      ...Array(6).fill("rgb(246, 248, 252)"),
+      ...Array(3).fill("rgb(31, 31, 31)")
+    ]
+  });
+  assert.equal(result.nightshadeActive, "true");
+  assert.equal(result.nightshadeAutoSkipped, "false");
 });
 
 test("a timed global pause overrides an explicit site enable", async () => {

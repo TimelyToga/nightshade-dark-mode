@@ -35,7 +35,9 @@ Chrome does not allow extensions to restyle its internal pages, the Chrome Web S
 
 Nightshade applies a reversible `invert(1) hue-rotate(180deg)` filter at `document_start`, then applies the same filter to photos, videos, canvases, and SVGs so their intended colors are restored. A pointer-transparent overlay provides extra dimming.
 
-Before keeping the filter, it inspects author-owned body and root backgrounds. A clearly dark background or an author-declared dark `color-scheme` is left untouched unless the user explicitly enables Nightshade for that hostname. This prevents the pale double-inversion seen on Google's native dark homepage.
+Before keeping the filter, it inspects author-owned body and root backgrounds plus representative opaque surfaces across the viewport. A clearly dark page or an author-declared dark `color-scheme` is left untouched unless the user explicitly enables Nightshade for that hostname. Delayed checks cover app shells such as Gmail that paint their theme after initial load.
+
+The filter runs only on the top document. Embedded mail and document frames inherit that single filter instead of receiving a second inversion.
 
 Settings use Chrome Sync storage. No browsing history, page content, or account data is collected or transmitted.
 
@@ -46,6 +48,7 @@ The popup's pause slider is a hard global override, including for sites that wer
 | Symptom | Smallest correction |
 | --- | --- |
 | A native dark site is inverted into a pale page | Nightshade should now auto-skip it. If a site uses an unusual transparent shell, turn it off for that hostname. |
+| An embedded email or document keeps the wrong theme | Nightshade filters the top document once so nested frames do not double-invert. |
 | A narrow page leaves bright outer gutters | Nightshade pre-inverts its fallback background so transparent layouts, including Hacker News, finish dark. |
 | A bright photo, video, chart, or map remains distracting | Disable **Preserve photo and video colors** or increase **Extra dimming**. |
 | A CSS background logo looks strange | Exclude the site; generic CSS cannot safely isolate every background image from its surrounding element. |
