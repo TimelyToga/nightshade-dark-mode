@@ -6,6 +6,7 @@ import vm from "node:vm";
 const contentScript = fs.readFileSync(new URL("../src/content.js", import.meta.url), "utf8");
 const contentStyles = fs.readFileSync(new URL("../src/content.css", import.meta.url), "utf8");
 const popupMarkup = fs.readFileSync(new URL("../src/popup.html", import.meta.url), "utf8");
+const optionsMarkup = fs.readFileSync(new URL("../src/options.html", import.meta.url), "utf8");
 const manifest = JSON.parse(fs.readFileSync(new URL("../src/manifest.json", import.meta.url), "utf8"));
 
 async function renderWithPageColors({
@@ -78,6 +79,7 @@ test("project and manifest versions are 0.1.0", () => {
   assert.equal(manifest.manifest_version, 3);
   assert.equal(manifest.version, "0.1.0");
   assert.equal(manifest.content_scripts[0].all_frames, false);
+  assert.deepEqual(manifest.options_ui, { page: "options.html", open_in_tab: true });
 });
 
 test("manifest exposes correctly sized Chrome icons", () => {
@@ -97,6 +99,19 @@ test("popup offers a timed global pause slider", () => {
   assert.match(popupMarkup, /id="pause-duration" type="range"/);
   assert.match(popupMarkup, /id="pause-global"/);
   assert.match(popupMarkup, /id="resume-global"/);
+});
+
+test("popup makes automatic native-dark detection explicit", () => {
+  assert.match(popupMarkup, /id="native-dark-notice"/);
+  assert.match(popupMarkup, /Native dark mode detected/);
+  assert.match(popupMarkup, /id="site-enabled-label"/);
+});
+
+test("settings page exposes global defaults and per-site rules", () => {
+  assert.match(popupMarkup, /id="open-settings"/);
+  assert.match(optionsMarkup, /id="global-enabled"/);
+  assert.match(optionsMarkup, /id="site-list"/);
+  assert.match(optionsMarkup, /Native-dark detection is live, not logged/);
 });
 
 test("transparent page gutters become dark after root inversion", () => {

@@ -35,13 +35,15 @@ Chrome does not allow extensions to restyle its internal pages, the Chrome Web S
 
 Nightshade applies a reversible `invert(1) hue-rotate(180deg)` filter at `document_start`, then applies the same filter to photos, videos, canvases, and SVGs so their intended colors are restored. A pointer-transparent overlay provides extra dimming.
 
-Before keeping the filter, it inspects author-owned body and root backgrounds plus representative opaque surfaces across the viewport. A clearly dark page or an author-declared dark `color-scheme` is left untouched unless the user explicitly enables Nightshade for that hostname. Delayed checks cover app shells such as Gmail that paint their theme after initial load.
+Before keeping the filter, it inspects author-owned body and root backgrounds plus representative opaque surfaces across the viewport. A clearly dark page or an author-declared dark `color-scheme` is left untouched unless the user explicitly enables Nightshade for that hostname. Delayed checks cover app shells such as Gmail that paint their theme after initial load. The popup displays a **Native dark mode detected** banner and relabels the site switch as **Force Nightshade anyway** when this automatic escape hatch is active.
 
 The filter runs only on the top document. Embedded mail and document frames inherit that single filter instead of receiving a second inversion.
 
 Settings use Chrome Sync storage. No browsing history, page content, or account data is collected or transmitted.
 
 The popup's pause slider is a hard global override, including for sites that were explicitly enabled. Open pages resume automatically when the timer expires, or immediately when **Resume now** is clicked.
+
+Open **Extension settings** from the popup to review or change global defaults and see every explicit per-site rule. The settings page labels rules as **Forced on**, **Excluded**, or **Follows default**, shows dimming and media overrides, and can remove obsolete rules. Automatically detected native-dark sites are evaluated live and are not retained as browsing history.
 
 ## Common failure modes
 

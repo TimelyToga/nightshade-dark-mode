@@ -12,6 +12,8 @@ const elements = {
   sitePanel: document.getElementById("site-panel"),
   siteName: document.getElementById("site-name"),
   siteEnabled: document.getElementById("site-enabled"),
+  siteEnabledLabel: document.getElementById("site-enabled-label"),
+  nativeDarkNotice: document.getElementById("native-dark-notice"),
   globalEnabled: document.getElementById("global-enabled"),
   pauseDuration: document.getElementById("pause-duration"),
   pauseDurationValue: document.getElementById("pause-duration-value"),
@@ -22,10 +24,16 @@ const elements = {
   dimValue: document.getElementById("dim-value"),
   preserveMedia: document.getElementById("preserve-media"),
   resetSite: document.getElementById("reset-site"),
+  openSettings: document.getElementById("open-settings"),
   status: document.getElementById("status")
 };
 
-const state = { settings: structuredClone(DEFAULTS), hostname: null, tab: null };
+const state = {
+  settings: structuredClone(DEFAULTS),
+  hostname: null,
+  tab: null,
+  autoSkipped: false
+};
 
 function clampDim(value) {
   const number = Number(value);
@@ -94,17 +102,27 @@ function renderPause() {
   elements.sitePanel.classList.toggle("paused", paused);
 }
 
+function renderNativeDarkNotice() {
+  const detected = state.autoSkipped && !isPaused();
+  elements.nativeDarkNotice.hidden = !detected;
+  elements.siteEnabledLabel.textContent = detected
+    ? "Force Nightshade anyway"
+    : "Use dark mode here";
+  elements.sitePanel.classList.toggle("native-dark-detected", detected);
+}
+
 function render() {
   const effective = effectiveSettings();
   elements.globalEnabled.checked = state.settings.globalEnabled;
   renderPause();
   if (!state.hostname) return;
 
-  elements.siteEnabled.checked = effective.enabled;
+  elements.siteEnabled.checked = effective.enabled && !state.autoSkipped;
   elements.dim.value = effective.dim;
   elements.dimValue.value = `${effective.dim}%`;
   elements.dimValue.textContent = `${effective.dim}%`;
   elements.preserveMedia.checked = effective.preserveMedia;
+  renderNativeDarkNotice();
 }
 
 async function save() {
@@ -120,9 +138,10 @@ function setStatus(message, isError = false) {
 async function checkPageConnection() {
   try {
     const response = await chrome.tabs.sendMessage(state.tab.id, { type: "nightshade:ping" });
+    state.autoSkipped = Boolean(response?.autoSkipped);
+    render();
     if (response?.autoSkipped) {
-      elements.siteEnabled.checked = false;
-      setStatus("This site already has a dark theme, so Nightshade left it alone. Turn the switch on to force it.");
+      setStatus("Automatic detection is active. Use the switch only if you want to override it.");
       return;
     }
     if (response?.pausedUntil) {
@@ -131,6 +150,8 @@ async function checkPageConnection() {
     }
     setStatus("Changes apply immediately in this tab.");
   } catch {
+    state.autoSkipped = false;
+    render();
     setStatus("Refresh this tab once after installing to apply Nightshade.", true);
   }
 }
@@ -141,6 +162,7 @@ function setSiteRule(update) {
 }
 
 elements.globalEnabled.addEventListener("change", async () => {
+  state.autoSkipped = false;
   state.settings.globalEnabled = elements.globalEnabled.checked;
   await save();
   setStatus(elements.globalEnabled.checked ? "Default dark mode is on." : "Default dark mode is off.");
@@ -163,9 +185,15 @@ elements.resumeGlobal.addEventListener("click", async () => {
 });
 
 elements.siteEnabled.addEventListener("change", async () => {
+  const overridingDetection = state.autoSkipped && elements.siteEnabled.checked;
+  state.autoSkipped = false;
   setSiteRule({ enabled: elements.siteEnabled.checked });
   await save();
-  setStatus(elements.siteEnabled.checked ? "Dark mode is on for this site." : "This site is excluded.");
+  setStatus(elements.siteEnabled.checked
+    ? overridingDetection
+      ? "Native dark mode detection is overridden for this site."
+      : "Dark mode is on for this site."
+    : "This site is excluded.");
 });
 
 elements.dim.addEventListener("input", () => {
@@ -186,9 +214,16 @@ elements.preserveMedia.addEventListener("change", async () => {
 });
 
 elements.resetSite.addEventListener("click", async () => {
+  state.autoSkipped = false;
   delete state.settings.sites[state.hostname];
   await save();
   setStatus("This site now follows the default settings.");
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  await checkPageConnection();
+});
+
+elements.openSettings.addEventListener("click", () => {
+  chrome.runtime.openOptionsPage();
 });
 
 async function initialize() {

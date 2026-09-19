@@ -20,8 +20,16 @@
         <p class="eyebrow">CURRENT SITE</p>
         <p class="site-name" id="site-name"></p>
 
+        <div id="native-dark-notice" class="native-dark-notice" role="status" hidden>
+          <span class="native-dark-icon" aria-hidden="true">✓</span>
+          <span class="native-dark-copy">
+            <strong>Native dark mode detected</strong>
+            <small>Nightshade is staying off so this site keeps its own theme.</small>
+          </span>
+        </div>
+
         <label class="switch-row">
-          <span>Use dark mode here</span>
+          <span id="site-enabled-label">Use dark mode here</span>
           <input id="site-enabled" type="checkbox" />
           <span class="switch" aria-hidden="true"></span>
         </label>
@@ -60,6 +68,14 @@
       </section>
 
       <p id="status" class="status" role="status"></p>
+
+      <button id="open-settings" class="settings-button" type="button">
+        <span>
+          <strong>Extension settings</strong>
+          <small>Global defaults and site rules</small>
+        </span>
+        <span class="settings-arrow" aria-hidden="true">→</span>
+      </button>
 
       <details>
         <summary>Quick fixes when a site looks wrong</summary>

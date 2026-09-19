@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Nightshade settings</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="mark" aria-hidden="true">◐</div>
+        <div>
+          <p class="eyebrow">NIGHTSHADE</p>
+          <h1>Settings &amp; site rules</h1>
+          <p class="subtitle">See exactly when Nightshade runs and where you have overridden it.</p>
+        </div>
+      </header>
+
+      <section>
+        <div class="section-heading">
+          <div>
+            <h2>Global defaults</h2>
+            <p>These settings apply unless a site rule or native-dark detection takes precedence.</p>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <strong>Default dark mode everywhere</strong>
+            <small>New sites follow this setting.</small>
+          </div>
+          <label class="switch-control">
+            <input id="global-enabled" type="checkbox" />
+            <span class="switch" aria-hidden="true"></span>
+            <span class="sr-only">Default dark mode everywhere</span>
+          </label>
+        </div>
+
+        <label class="setting-row range-setting" for="global-dim">
+          <span>
+            <strong>Default extra dimming</strong>
+            <small>Reduces brightness after recoloring.</small>
+          </span>
+          <span class="range-control">
+            <output id="global-dim-value">10%</output>
+            <input id="global-dim" type="range" min="0" max="55" step="1" />
+          </span>
+        </label>
+
+        <label class="setting-row check-setting">
+          <span>
+            <strong>Preserve photo and video colors</strong>
+            <small>Double-inverts common media so its original colors remain.</small>
+          </span>
+          <input id="global-preserve-media" type="checkbox" />
+        </label>
+
+        <div id="pause-card" class="pause-card" hidden>
+          <div>
+            <strong>Nightshade is paused everywhere</strong>
+            <small id="pause-description"></small>
+          </div>
+          <button id="resume-global" class="secondary-button" type="button">Resume now</button>
+        </div>
+      </section>
+
+      <section>
+        <div class="section-heading site-rules-heading">
+          <div>
+            <h2>Site rules</h2>
+            <p>Only sites you explicitly changed appear here.</p>
+          </div>
+          <span id="rule-count" class="count-badge">0 rules</span>
+        </div>
+
+        <div class="privacy-note">
+          <span aria-hidden="true">◆</span>
+          <p><strong>Native-dark detection is live, not logged.</strong> Automatically skipped sites are not saved as browsing history.</p>
+        </div>
+
+        <div id="empty-rules" class="empty-state">
+          <strong>No site-specific rules yet</strong>
+          <span>Every site currently follows the global defaults and automatic detection.</span>
+        </div>
+        <div id="site-list" class="site-list" aria-live="polite"></div>
+      </section>
+
+      <p id="status" class="status" role="status"></p>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>
