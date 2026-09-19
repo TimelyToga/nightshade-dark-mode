@@ -6,6 +6,7 @@ import vm from "node:vm";
 const contentScript = fs.readFileSync(new URL("../src/content.js", import.meta.url), "utf8");
 const contentStyles = fs.readFileSync(new URL("../src/content.css", import.meta.url), "utf8");
 const popupMarkup = fs.readFileSync(new URL("../src/popup.html", import.meta.url), "utf8");
+const popupScript = fs.readFileSync(new URL("../src/popup.js", import.meta.url), "utf8");
 const optionsMarkup = fs.readFileSync(new URL("../src/options.html", import.meta.url), "utf8");
 const manifest = JSON.parse(fs.readFileSync(new URL("../src/manifest.json", import.meta.url), "utf8"));
 
@@ -102,9 +103,12 @@ test("popup offers a timed global pause slider", () => {
 });
 
 test("popup makes automatic native-dark detection explicit", () => {
-  assert.match(popupMarkup, /id="native-dark-notice"/);
-  assert.match(popupMarkup, /Native dark mode detected/);
+  assert.match(popupMarkup, /id="site-state-notice"/);
+  assert.match(popupMarkup, /id="site-state-title"/);
   assert.match(popupMarkup, /id="site-enabled-label"/);
+  assert.match(popupScript, /Auto-off — native dark detected/);
+  assert.match(popupScript, /Off — following global default/);
+  assert.match(popupScript, /Off — explicitly excluded/);
 });
 
 test("settings page exposes global defaults and per-site rules", () => {

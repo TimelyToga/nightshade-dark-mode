@@ -35,7 +35,7 @@ Chrome does not allow extensions to restyle its internal pages, the Chrome Web S
 
 Nightshade applies a reversible `invert(1) hue-rotate(180deg)` filter at `document_start`, then applies the same filter to photos, videos, canvases, and SVGs so their intended colors are restored. A pointer-transparent overlay provides extra dimming.
 
-Before keeping the filter, it inspects author-owned body and root backgrounds plus representative opaque surfaces across the viewport. A clearly dark page or an author-declared dark `color-scheme` is left untouched unless the user explicitly enables Nightshade for that hostname. Delayed checks cover app shells such as Gmail that paint their theme after initial load. The popup displays a **Native dark mode detected** banner and relabels the site switch as **Force Nightshade anyway** when this automatic escape hatch is active.
+Before keeping the filter, it inspects author-owned body and root backgrounds plus representative opaque surfaces across the viewport. A clearly dark page or an author-declared dark `color-scheme` is left untouched unless the user explicitly enables Nightshade for that hostname. Delayed checks cover app shells such as Gmail that paint their theme after initial load. The popup always identifies the effective state and its source: global default, explicit site rule, timed pause, or native-dark auto-detection. When this automatic escape hatch is active, the site switch is relabeled **Force Nightshade anyway**.
 
 The filter runs only on the top document. Embedded mail and document frames inherit that single filter instead of receiving a second inversion.
 

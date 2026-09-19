@@ -13,7 +13,10 @@ const elements = {
   siteName: document.getElementById("site-name"),
   siteEnabled: document.getElementById("site-enabled"),
   siteEnabledLabel: document.getElementById("site-enabled-label"),
-  nativeDarkNotice: document.getElementById("native-dark-notice"),
+  siteStateNotice: document.getElementById("site-state-notice"),
+  siteStateIcon: document.getElementById("site-state-icon"),
+  siteStateTitle: document.getElementById("site-state-title"),
+  siteStateDetail: document.getElementById("site-state-detail"),
   globalEnabled: document.getElementById("global-enabled"),
   pauseDuration: document.getElementById("pause-duration"),
   pauseDurationValue: document.getElementById("pause-duration-value"),
@@ -102,13 +105,69 @@ function renderPause() {
   elements.sitePanel.classList.toggle("paused", paused);
 }
 
-function renderNativeDarkNotice() {
-  const detected = state.autoSkipped && !isPaused();
-  elements.nativeDarkNotice.hidden = !detected;
-  elements.siteEnabledLabel.textContent = detected
+function siteStatePresentation() {
+  const rule = siteRule();
+  const explicitlyConfigured = typeof rule.enabled === "boolean";
+
+  if (isPaused()) {
+    return {
+      tone: "paused",
+      icon: "Ⅱ",
+      title: "Paused everywhere",
+      detail: "The timed global pause overrides every site setting."
+    };
+  }
+
+  if (state.autoSkipped) {
+    return {
+      tone: "auto",
+      icon: "✓",
+      title: "Auto-off — native dark detected",
+      detail: "Nightshade is staying off so this site keeps its own theme."
+    };
+  }
+
+  if (explicitlyConfigured) {
+    return rule.enabled
+      ? {
+          tone: "active",
+          icon: "✓",
+          title: "On — forced for this site",
+          detail: "This site rule overrides the global default and automatic detection."
+        }
+      : {
+          tone: "excluded",
+          icon: "×",
+          title: "Off — explicitly excluded",
+          detail: "A site rule keeps Nightshade disabled here."
+        };
+  }
+
+  return state.settings.globalEnabled
+    ? {
+        tone: "active",
+        icon: "✓",
+        title: "On — following global default",
+        detail: "There is no site-specific override for this hostname."
+      }
+    : {
+        tone: "off",
+        icon: "–",
+        title: "Off — following global default",
+        detail: "Default dark mode everywhere is currently turned off."
+      };
+}
+
+function renderSiteStateNotice() {
+  const presentation = siteStatePresentation();
+  elements.siteStateNotice.className = `site-state-notice tone-${presentation.tone}`;
+  elements.siteStateIcon.textContent = presentation.icon;
+  elements.siteStateTitle.textContent = presentation.title;
+  elements.siteStateDetail.textContent = presentation.detail;
+  elements.siteEnabledLabel.textContent = state.autoSkipped && !isPaused()
     ? "Force Nightshade anyway"
     : "Use dark mode here";
-  elements.sitePanel.classList.toggle("native-dark-detected", detected);
+  elements.sitePanel.classList.toggle("native-dark-detected", state.autoSkipped && !isPaused());
 }
 
 function render() {
@@ -122,7 +181,7 @@ function render() {
   elements.dimValue.value = `${effective.dim}%`;
   elements.dimValue.textContent = `${effective.dim}%`;
   elements.preserveMedia.checked = effective.preserveMedia;
-  renderNativeDarkNotice();
+  renderSiteStateNotice();
 }
 
 async function save() {
