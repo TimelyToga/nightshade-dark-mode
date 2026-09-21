@@ -36,6 +36,43 @@
     return colors.size > 1 ? "preserve" : "theme";
   }
 
+  function isDarkNeutral(paint) {
+    const match = /^rgba?\(([^)]+)\)$/.exec(paint);
+    if (!match) return false;
+    const channels = match[1].split(/[,\s/]+/).filter(Boolean).map(Number);
+    if (channels.length < 3 || channels.some((value) => !Number.isFinite(value))) return false;
+    if (channels.length > 3 && channels[3] < 0.9) return false;
+    const rgb = channels.slice(0, 3);
+    // Absolute channel spread admits dark blue-gray wordmarks (e.g. #1c2b33)
+    // but excludes saturated brand blue. Do not alter gradients or light paint.
+    return Math.max(...rgb) <= 80 && Math.max(...rgb) - Math.min(...rgb) <= 32;
+  }
+
+  function isLabelledLogo(svg) {
+    const referenced = (svg.getAttribute("aria-labelledby") || "").split(/\s+/)
+      .map((id) => svg.ownerDocument.getElementById(id)?.textContent || "").join(" ");
+    const label = [svg.getAttribute("aria-label"), referenced, svg.querySelector("title")?.textContent].join(" ");
+    return /\b(logo|wordmark)\b/i.test(label);
+  }
+
+  function themeLogoParts(svg, mode) {
+    // Clear stale classifications after repainting, relabelling or DOM moves.
+    svg.querySelectorAll("[data-nightshade-theme-part]")
+      .forEach((shape) => shape.removeAttribute("data-nightshade-theme-part"));
+    if (mode !== "preserve" || !isLabelledLogo(svg)) return;
+    if (svg.querySelector("use, image, foreignObject, mask, clipPath, filter")) return;
+    const shapes = svg.querySelectorAll(artwork);
+    if (shapes.length > 128) return;
+    for (const shape of shapes) {
+      if (shape.closest("defs")) continue;
+      const style = getComputedStyle(shape);
+      if (style.filter !== "none" || style.display === "none" || style.visibility === "hidden") continue;
+      const paints = [style.fillOpacity !== "0" && style.fill, style.strokeOpacity !== "0" && style.stroke]
+        .filter((paint) => paint && paint !== "none" && paint !== "rgba(0, 0, 0, 0)");
+      if (paints.length && paints.every(isDarkNeutral)) shape.setAttribute("data-nightshade-theme-part", "true");
+    }
+  }
+
   function createController(document, hostname) {
     let observer;
     let frame;
@@ -45,7 +82,9 @@
       // Only the outer SVG gets a filter; nested SVGs must not undo it again.
       if (element.localName === "svg") {
         if (element.parentElement?.closest("svg")) return;
-        element.setAttribute(attribute, classifySvg(element));
+        const mode = classifySvg(element);
+        element.setAttribute(attribute, mode);
+        themeLogoParts(element, mode);
       } else if (element.localName === "img") {
         if (imageRule(hostname, element.getAttribute("src") || "", document.baseURI)) {
           element.setAttribute(attribute, "theme");
@@ -93,10 +132,10 @@
         observer.observe(document.documentElement, {
           childList: true, subtree: true, attributes: true,
           // Exclude our own markers to avoid a feedback loop.
-          attributeFilter: ["src", "fill", "stroke", "style", "class", "opacity"]
+          attributeFilter: ["src", "fill", "stroke", "style", "class", "opacity", "fill-opacity", "stroke-opacity", "aria-label", "aria-labelledby"]
         });
       }
     };
   }
-  globalThis.NightshadeMedia = { createController, imageRule, classifySvg };
+  globalThis.NightshadeMedia = { createController, imageRule, classifySvg, isDarkNeutral };
 })();

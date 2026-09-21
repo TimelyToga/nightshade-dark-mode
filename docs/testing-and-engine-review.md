@@ -13,6 +13,7 @@ The fix separates media policy from settings and dark detection in `src/media.js
 | Situation | Automated coverage | Remaining gap |
 | --- | --- | --- |
 | Transparent dark logo + currentColor icons | Domain-bound unit checks; actual CSS/controller browser case | Real vendor may rename the asset; no live authenticated test |
+| Mixed logo: gradient symbol + dark lettering | Dark-neutral paint unit checks; labelled/unlabelled/light-wordmark browser cases; relabelling and disable/re-enable | Only inline SVGs labelled logo/wordmark; heuristic cannot identify lettering by geometry |
 | Multicolor SVG and image | Browser checks for preservation on/off; visual gallery | Pixel/contrast thresholds not yet automated; image fixture is synthetic SVG |
 | SPA icon insertion/recolor/removal | Browser mutations and filter assertions | CSS stylesheet replacement, hover-only colors, animations |
 | Disable/re-enable | Browser checks removal/restoration of effective filters | Full Chrome extension reload and storage migration |
@@ -46,3 +47,9 @@ The current gallery provides automatically evaluated browser assertions once ope
 5. **Treat whole-page inversion as a compatibility mode.** It is compact and reversible, but cannot perfectly handle mixed light/dark regions, existing filters, transparent image logos, CSS backgrounds, video overlays and all embedded surfaces. If fixture coverage shows these dominate, evaluate a computed-color transformation engine behind a separate mode. Do not silently replace the current renderer without comparative visual/performance evidence.
 
 The immediate recommendation is shared state plus a headless fixture gate. A full rendering-engine rewrite would be premature; the fixture library should establish where the current approach actually fails.
+
+## Mixed-logo follow-up — 2026-09-21
+
+Meta's supplied logo separates a dark blue-gray wordmark path (`#1c2b33`) from colored and gradient symbol paths. Preserving the entire SVG hid the wordmark. The repair recognizes logo/wordmark labels (`aria-label`, `aria-labelledby`, or SVG title), then adds a reversible extra inversion only to solid dark near-neutral shapes inside preserved artwork. Gradients and saturated paint remain preserved. Existing filters on candidate shapes, masks, clipping, embedded images, and sprite references are excluded. The original fills/strokes are not overwritten.
+
+This generalizes by rendering pattern rather than a Meta hostname or generated class name. It is intentionally conservative: the label must contain the English word logo or wordmark, all visible paints on the candidate shape must be dark neutral, and the SVG must contain at most 128 shapes. A labelled logo's dark decorative shape may still be selected; there is no OCR or geometric text recognition. Browser regression fixtures use original synthetic geometry and the observed color pattern, not the saved account page. Verification: 19 Node tests and 15 browser scenarios passed, with isolated in-app visual inspection.

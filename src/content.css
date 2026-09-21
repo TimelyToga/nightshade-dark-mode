@@ -35,6 +35,12 @@
   filter: invert(1) hue-rotate(180deg) !important;
 }
 
+/* A preserved logo keeps its brand colors; only dark neutral wordmark shapes
+ * get an additional inversion. Never touch page-authored fill/stroke values. */
+:root[data-nightshade-active="true"][data-nightshade-preserve-media="true"] svg[data-nightshade-media="preserve"] [data-nightshade-theme-part="true"] {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
 /* The page root is inverted, so this child is inverted again to stay black. */
 #nightshade-extension-overlay {
   display: none;

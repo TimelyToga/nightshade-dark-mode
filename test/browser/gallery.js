@@ -1,4 +1,7 @@
 const cases = [
+  { id: "mixed-logo", title: "Meta pattern: blue gradient + dark wordmark", body: "white", logo: true },
+  { id: "mixed-art", title: "Same palette in unlabelled artwork: preserve", body: "white", logo: true, unlabelled: true },
+  { id: "light-logo", title: "Light wordmark: no extra inversion", body: "white", logo: true, lightWordmark: true },
   { id: "icons", title: "1Password: transparent logo and UI icons", body: "white", icons: true, settings: { preserveMedia: false } },
   { id: "art", title: "Multicolor artwork and photos", body: "white", art: true },
   { id: "dynamic", title: "SPA: inserted and recolored icons", body: "white", dynamic: true },
@@ -15,6 +18,13 @@ const cases = [
 ];
 const icon = '<svg id="icon" width="40" height="40" fill="currentColor" viewBox="0 0 40 40"><path d="M5 5h30v30H5zM12 12v16h16V12z" fill-rule="evenodd"/></svg>';
 const illustration = '<svg id="art" width="90" height="40"><rect width="45" height="40" fill="#ee7755"/><rect x="45" width="45" height="40" fill="#3388cc"/></svg>';
+function mixedLogo(spec) {
+  return `<svg id="mixed-logo" ${spec.unlabelled ? '' : 'aria-label="Example logo"'} role="img" width="180" height="48" viewBox="0 0 180 48">
+    <defs><linearGradient id="brand"><stop stop-color="#0064e0"/><stop offset="1" stop-color="#0180fa"/></linearGradient></defs>
+    <path id="brand-symbol" fill="none" stroke="url(#brand)" stroke-width="5" d="M6 24C6 0 23 0 32 24S58 48 58 24S41 0 32 24S6 48 6 24"/>
+    <g fill="${spec.lightWordmark ? '#eeeeee' : '#1c2b33'}"><path id="wordmark" d="M72 38V10H78L86 25L94 10H100V38H94V21L86 35L78 21V38Z M108 10H132V16H114V21H128V27H114V32H132V38H108Z"/></g>
+    </svg>`;
+}
 const defaults = { globalEnabled: true, disabledUntil: 0, dim: 0, preserveMedia: true, sites: {} };
 let passed = 0;
 let failed = 0;
@@ -40,6 +50,7 @@ async function run(spec) {
     <h3>Example application</h3>
     ${spec.icons ? '<img id="logo" width="48" height="48" src="/test/browser/1password-logo-a123.svg">' + icon : ""}
     ${spec.art ? illustration + '<img id="photo" width="60" height="40" src="data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'60\' height=\'40\'%3E%3Cpath fill=\'%233388cc\' d=\'M0 0h60v40H0z\'/%3E%3C/svg%3E">' : ""}
+    ${spec.logo ? mixedLogo(spec) : ""}
     <p>Readable text and controls</p><button>Example action</button></main>
     <script>window.chrome={storage:{sync:{get:async()=>(${JSON.stringify(settings)})},onChanged:{addListener(fn){window.changeSettings=fn}}},runtime:{onMessage:{addListener(){}}}};<\/script>
     <script src="/src/media.js"><\/script><script src="/src/content.js"><\/script></body></html>`;
@@ -53,6 +64,29 @@ async function run(spec) {
     check(doc.documentElement.dataset.nightshadeActive === String(active), "Effective active state is wrong");
     check(doc.documentElement.dataset.nightshadeAutoSkipped === String(!!spec.skip), "Native-dark skip state is wrong");
     check((filter("html") !== "none") === active, "Actual root filter does not match state");
+    if (spec.logo) {
+      const shouldRepair = !spec.unlabelled && !spec.lightWordmark;
+      check(filter("#mixed-logo") !== "none", "Brand artwork not preserved");
+      check(filter("#brand-symbol") === "none", "Brand gradient changed");
+      check((filter("#wordmark") !== "none") === shouldRepair, "Wordmark contrast repair incorrect");
+      check(win.getComputedStyle(doc.querySelector("#wordmark")).fill === (spec.lightWordmark ? "rgb(238, 238, 238)" : "rgb(28, 43, 51)"), "Author paint was overwritten");
+      if (shouldRepair) {
+        const logo = doc.querySelector("#mixed-logo");
+        logo.removeAttribute("aria-label");
+        await wait(80);
+        check(filter("#wordmark") === "none", "Relabelling left stale repair");
+        logo.setAttribute("aria-label", "Example logo");
+        await wait(80);
+        win.chrome.storage.sync.get = async () => ({ ...settings, globalEnabled: false });
+        win.changeSettings({}, "sync");
+        await wait(80);
+        check(filter("#wordmark") === "none" && filter("#mixed-logo") === "none", "Repair survives disabling");
+        win.chrome.storage.sync.get = async () => settings;
+        win.changeSettings({}, "sync");
+        await wait(80);
+        check(filter("#wordmark") !== "none", "Repair not restored on re-enable");
+      }
+    }
     if (spec.icons) {
       // Fixture file is original artwork; use the real asset family's filename
       // for matching without loading a vendor asset or requiring a live account.

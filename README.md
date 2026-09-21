@@ -37,6 +37,8 @@ Nightshade applies a reversible `invert(1) hue-rotate(180deg)` filter at `docume
 
 The media classifier updates when an app inserts or recolors icons and stops observing while Nightshade is inactive. A small, named site-rule registry handles exceptions that cannot be inferred safely: for example, 1Password's transparent dark logo follows page inversion while its avatars remain preserved. This rule is limited to 1Password hostnames and the known logo filename pattern.
 
+For inline SVGs explicitly labelled as a logo or wordmark, Nightshade can also brighten individual dark neutral shapes while preserving colored symbols and gradients. This handles Meta-style blue symbols with dark lettering without a site-specific rule. It leaves unlabelled artwork, light lettering, and ambiguous masked/embedded artwork alone. This is a conservative heuristic, not text recognition; unlabelled or image-based logos still need other handling.
+
 Before keeping the filter, it inspects author-owned body and root backgrounds plus representative opaque surfaces across the viewport. A clearly dark page or an author-declared dark `color-scheme` is left untouched unless the user explicitly enables Nightshade for that hostname. Delayed checks cover app shells such as Gmail that paint their theme after initial load. The popup always identifies the effective state and its source: global default, explicit site rule, timed pause, or native-dark auto-detection. When this automatic escape hatch is active, the site switch is relabeled **Force Nightshade anyway**.
 
 The filter runs only on the top document. Embedded mail and document frames inherit that single filter instead of receiving a second inversion.
