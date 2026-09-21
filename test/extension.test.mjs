@@ -88,9 +88,9 @@ async function renderWithPageColors({
   return root.dataset;
 }
 
-test("project and manifest versions are 0.1.0", () => {
+test("project and manifest versions are 0.2.0", () => {
   assert.equal(manifest.manifest_version, 3);
-  assert.equal(manifest.version, "0.1.0");
+  assert.equal(manifest.version, "0.2.0");
   assert.equal(manifest.content_scripts[0].all_frames, false);
   assert.deepEqual(manifest.options_ui, { page: "options.html", open_in_tab: true });
 });

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Nightshade — Dark Mode Anywhere",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A gentle, reversible dark mode for websites that do not provide one.",
   "icons": {
     "16": "icons/icon16.png",
