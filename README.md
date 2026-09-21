@@ -53,16 +53,16 @@ Load `dist/nightshade-dark-mode` from `chrome://extensions`. The build also crea
 
 ## Controls
 
-The popup shows why Nightshade is on or off for the current page: global default, explicit site rule, timed pause, or native-dark detection.
+The compact popup separates your saved site mode from what Nightshade is actually doing on the page.
 
-- **Use dark mode here** saves an explicit on/off rule for the current hostname.
-- **Reset this site to the default** removes all overrides for that hostname, including dimming and media settings.
-- **Extra dimming** adds a translucent overlay after recoloring.
-- **Preserve photo and video colors** counter-inverts common media so it keeps its original colors.
-- **Default dark mode everywhere** controls websites without a site-specific rule.
-- **Pause everywhere** temporarily disables Nightshade on every website, including sites forced on.
+- **Auto / Always / Never** follows your global default and native-dark detection, forces Nightshade on, or excludes the current hostname.
+- **Back to Auto** clears only the mode override. Custom dimming and media preferences are retained.
+- **Appearance** expands dimming and media controls while Nightshade is active. Each field shows Default or Custom and has its own reset.
+- **Undo** restores the last site-field change while the popup remains open.
+- **Pause everywhere** opens duration presets from 15 minutes to 24 hours. Pausing overrides every site rule; the banner offers Resume now and +1 hour.
+- **Refresh tab** appears when the page script cannot be reached. Protected pages hide site controls.
 
-Site rules and global defaults can also be reviewed from **Extension settings**.
+Use the settings gear or **All sites** to review explicit site rules and edit global defaults. Auto respects the global enable default; that default is not a master switch for Always sites. Existing saved settings need no migration.
 
 ## How it works
 
@@ -89,6 +89,8 @@ npm test             # Node regression tests
 npm run build         # Unpacked extension and release ZIP
 npm run test:browser  # Local visual regression gallery on port 8769
 ```
+
+The main gallery covers page rendering. Open `/test/browser/popups.html` on the same local server for the popup state gallery and automated interaction checks, including Auto/Undo, field resets, pause/resume, refresh and failed saves. Both use synthetic data; popup tests simulate Chrome APIs.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the regression-fixture workflow. CI runs the tests, validates the release ZIP, and uploads it as a workflow artifact. Pushing a version tag such as `v0.1.0` also creates a GitHub Release with the ZIP and SHA-256 checksum.
 

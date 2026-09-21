@@ -1,92 +1,44 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Nightshade</title>
-    <link rel="stylesheet" href="popup.css" />
-  </head>
-  <body>
-    <main>
-      <header>
-        <div class="mark" aria-hidden="true">◐</div>
-        <div>
-          <h1>Nightshade</h1>
-          <p>Dark mode, where it is missing.</p>
-        </div>
-      </header>
-
-      <section id="site-panel" hidden>
-        <p class="eyebrow">CURRENT SITE</p>
-        <p class="site-name" id="site-name"></p>
-
-        <div id="site-state-notice" class="site-state-notice tone-off" role="status">
-          <span id="site-state-icon" class="site-state-icon" aria-hidden="true">…</span>
-          <span class="site-state-copy">
-            <strong id="site-state-title">Checking site status…</strong>
-            <small id="site-state-detail">Nightshade is determining which setting applies.</small>
-          </span>
-        </div>
-
-        <label class="switch-row">
-          <span id="site-enabled-label">Use dark mode here</span>
-          <input id="site-enabled" type="checkbox" />
-          <span class="switch" aria-hidden="true"></span>
-        </label>
-
-        <label class="range-row" for="dim">
-          <span>Extra dimming <output id="dim-value">10%</output></span>
-          <input id="dim" type="range" min="0" max="55" step="1" />
-        </label>
-
-        <label class="check-row">
-          <input id="preserve-media" type="checkbox" />
-          <span>Preserve photo and video colors</span>
-        </label>
-
-        <button id="reset-site" class="text-button" type="button">Reset this site to the default</button>
-      </section>
-
-      <section class="global-panel">
-        <label class="switch-row">
-          <span>Default dark mode everywhere</span>
-          <input id="global-enabled" type="checkbox" />
-          <span class="switch" aria-hidden="true"></span>
-        </label>
-
-        <div class="pause-control">
-          <label class="range-row" for="pause-duration">
-            <span>Pause everywhere <output id="pause-duration-value">1 hour</output></span>
-            <input id="pause-duration" type="range" min="0" max="6" step="1" value="2" />
-          </label>
-          <div class="pause-actions">
-            <button id="pause-global" class="primary-button" type="button">Pause for 1 hour</button>
-            <button id="resume-global" class="text-button" type="button" hidden>Resume now</button>
-          </div>
-          <p id="pause-until" class="pause-until" hidden></p>
-        </div>
-      </section>
-
-      <p id="status" class="status" role="status"></p>
-
-      <button id="open-settings" class="settings-button" type="button">
-        <span>
-          <strong>Extension settings</strong>
-          <small>Global defaults and site rules</small>
-        </span>
-        <span class="settings-arrow" aria-hidden="true">→</span>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Nightshade</title><link rel="stylesheet" href="popup.css"></head>
+<body>
+  <main>
+    <header>
+      <img src="icons/icon32.png" width="20" height="20" alt="Nightshade">
+      <strong id="site-name">Nightshade</strong>
+      <button id="open-settings" class="icon-button" aria-label="Extension settings" title="Settings">⚙</button>
+    </header>
+    <section id="result" role="status" aria-live="polite">
+      <span id="state-dot" class="dot"></span>
+      <div><strong id="state-title">Checking this page…</strong><p id="state-detail"></p></div>
+    </section>
+    <section id="pause-banner" class="pause-banner" hidden>
+      <strong id="pause-until"></strong>
+      <div class="pause-actions"><button id="resume-global" class="primary">Resume now</button><button id="extend-pause" class="outline">+1 hour</button></div>
+    </section>
+    <button id="refresh-tab" class="primary wide" hidden>Refresh tab</button>
+    <section id="site-controls" hidden>
+      <p id="paused-caption" class="eyebrow" hidden>WHEN NIGHTSHADE RESUMES</p>
+      <fieldset id="site-mode" class="segmented"><legend class="sr-only">Nightshade on this site</legend>
+        <label><input type="radio" name="mode" value="auto"><span>Auto</span></label>
+        <label><input type="radio" name="mode" value="always"><span>Always</span></label>
+        <label><input type="radio" name="mode" value="never"><span>Never</span></label>
+      </fieldset>
+      <div id="rule-note" class="rule-note" hidden><span>Saved for this site</span><button id="back-auto" class="link">Back to Auto</button></div>
+      <button id="appearance-toggle" class="appearance-toggle" aria-expanded="false" aria-controls="appearance">
+        <strong>Appearance</strong><span id="appearance-summary"></span><span class="chevron" aria-hidden="true">›</span>
       </button>
-
-      <details>
-        <summary>Quick fixes when a site looks wrong</summary>
-        <ul>
-          <li>Turn this site off if it already has a good dark mode.</li>
-          <li>Untick photo preservation if a bright image is still distracting.</li>
-          <li>Use less dimming for video, maps, or color-sensitive work.</li>
-          <li>Refresh once after installing if this tab does not change.</li>
-        </ul>
-      </details>
-    </main>
-    <script src="popup.js"></script>
-  </body>
+      <section id="appearance" class="appearance" hidden>
+        <div class="field-heading"><label for="dim">Extra dimming <output id="dim-value"></output></label><span id="dim-source" class="badge"></span><button id="reset-dim" class="icon-button" aria-label="Use default dimming" title="Use default dimming">↺</button></div>
+        <input id="dim" type="range" min="0" max="55" step="1" list="dim-default"><datalist id="dim-default"></datalist>
+        <p id="dim-default-label" class="muted"></p>
+        <div class="media-row"><label><input id="preserve-media" type="checkbox">Keep media colors</label><span id="media-source" class="badge"></span><button id="reset-media" class="icon-button" aria-label="Use default media setting" title="Use default media setting">↺</button></div>
+      </section>
+    </section>
+    <div id="feedback" class="feedback" role="status" hidden><span id="feedback-text"></span><button id="undo" class="link" hidden>Undo</button></div>
+    <footer><button id="pause-toggle" class="outline" aria-expanded="false" aria-controls="pause-menu">Pause everywhere</button><button id="all-sites" class="link">All sites</button></footer>
+    <section id="pause-menu" class="pause-menu" hidden><label for="pause-duration">Pause for</label><select id="pause-duration"><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="60" selected>1 hour</option><option value="120">2 hours</option><option value="240">4 hours</option><option value="480">8 hours</option><option value="1440">24 hours</option></select><button id="pause-global" class="primary">Pause</button></section>
+  </main>
+  <script src="popup.js"></script>
+</body>
 </html>

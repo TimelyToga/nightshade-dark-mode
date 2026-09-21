@@ -96,19 +96,17 @@ test("manifest exposes correctly sized Chrome icons", () => {
   }
 });
 
-test("popup offers a timed global pause slider", () => {
-  assert.match(popupMarkup, /id="pause-duration" type="range"/);
+test("popup offers timed global pause presets", () => {
+  assert.match(popupMarkup, /select id="pause-duration"/);
   assert.match(popupMarkup, /id="pause-global"/);
   assert.match(popupMarkup, /id="resume-global"/);
 });
 
-test("popup makes automatic native-dark detection explicit", () => {
-  assert.match(popupMarkup, /id="site-state-notice"/);
-  assert.match(popupMarkup, /id="site-state-title"/);
-  assert.match(popupMarkup, /id="site-enabled-label"/);
-  assert.match(popupScript, /Auto-off — native dark detected/);
-  assert.match(popupScript, /Off — following global default/);
-  assert.match(popupScript, /Off — explicitly excluded/);
+test("popup separates site policy from observed page status", () => {
+  assert.match(popupMarkup, /id="state-title"/);
+  for (const mode of ["auto", "always", "never"]) assert.ok(popupMarkup.includes(`value="${mode}"`));
+  assert.match(popupScript, /Already dark, left as is/);
+  assert.match(popupMarkup, /id="undo"/);
 });
 
 test("settings page exposes global defaults and per-site rules", () => {
