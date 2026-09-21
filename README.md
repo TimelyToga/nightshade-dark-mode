@@ -1,70 +1,101 @@
 # Nightshade — Dark Mode Anywhere
 
 <p align="center">
-  <img src="design/logo-concepts/eclipse-leaf-corona-beam.png" alt="Nightshade eclipse-and-leaf logo" width="160">
+  <img src="assets/nightshade-logo.png" alt="Nightshade eclipse logo" width="144">
 </p>
 
-Nightshade is a small Manifest V3 Chrome extension that gives light-only websites a reversible dark mode. It skips sites that already expose a dark root or body background, supports per-site overrides, preserves media colors by default, offers optional extra dimming, and can pause itself everywhere for 15 minutes to 24 hours.
+[![CI](https://github.com/TimelyToga/nightshade-dark-mode/actions/workflows/ci.yml/badge.svg)](https://github.com/TimelyToga/nightshade-dark-mode/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## Effect
+Nightshade is a small Chrome extension that adds a reversible dark mode to websites that do not provide one. It automatically leaves native dark themes alone and provides per-site controls for the exceptions.
 
-| Light-only page | Nightshade enabled |
+> Nightshade is currently distributed as an unpacked extension through GitHub Releases. It is not yet available in the Chrome Web Store.
+
+## Features
+
+- Darkens light websites automatically.
+- Detects and skips many native dark themes.
+- Preserves photos, videos, and multicolor artwork by default.
+- Supports per-site on/off, dimming, and media overrides.
+- Can pause itself everywhere for 15 minutes to 24 hours.
+- Stores settings with Chrome Sync and has no analytics or external service.
+
+## What it looks like
+
+| Original page | Nightshade enabled |
 | --- | --- |
-| ![Representative productivity page before Nightshade](docs/screenshots/nightshade-before.png) | ![The same page with Nightshade enabled](docs/screenshots/nightshade-after.png) |
+| ![A representative light page before Nightshade](docs/screenshots/nightshade-before.jpg) | ![The same page after Nightshade is enabled](docs/screenshots/nightshade-after.jpg) |
 
-These screenshots use the same inversion and 10% dimming applied by the extension on a representative light-only page. Native dark pages are detected and left unchanged.
+## Install
 
-## Build and load
+### From a GitHub release
+
+1. Download `nightshade-dark-mode.zip` from the [latest release](https://github.com/TimelyToga/nightshade-dark-mode/releases/latest).
+2. Extract the ZIP to a permanent folder. Chrome cannot load the ZIP directly.
+3. Open `chrome://extensions` in Chrome.
+4. Enable **Developer mode**.
+5. Select **Load unpacked** and choose the extracted folder containing `manifest.json`.
+
+When updating, replace the extracted files, select Nightshade's reload button on `chrome://extensions`, and refresh open website tabs.
+
+### From source
+
+Nightshade has no runtime or development dependencies beyond Node.js 24 and the `zip` command.
 
 ```sh
+git clone https://github.com/TimelyToga/nightshade-dark-mode.git
+cd nightshade-dark-mode
 npm test
 npm run build
 ```
 
-Then open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select:
+Load `dist/nightshade-dark-mode` from `chrome://extensions`. The build also creates `dist/nightshade-dark-mode.zip`.
 
-```text
-dist/nightshade-dark-mode
-```
+## Controls
 
-After rebuilding, click Nightshade's reload button in `chrome://extensions` and refresh the website tab. A distributable archive is also written to `dist/nightshade-dark-mode.zip`.
+The popup shows why Nightshade is on or off for the current page: global default, explicit site rule, timed pause, or native-dark detection.
 
-Chrome does not allow extensions to restyle its internal pages, the Chrome Web Store, or some protected PDF/sign-in surfaces. For local files, enable **Allow access to file URLs** on Nightshade's extension card.
+- **Use dark mode here** saves an explicit on/off rule for the current hostname.
+- **Reset this site to the default** removes all overrides for that hostname, including dimming and media settings.
+- **Extra dimming** adds a translucent overlay after recoloring.
+- **Preserve photo and video colors** counter-inverts common media so it keeps its original colors.
+- **Default dark mode everywhere** controls websites without a site-specific rule.
+- **Pause everywhere** temporarily disables Nightshade on every website, including sites forced on.
+
+Site rules and global defaults can also be reviewed from **Extension settings**.
 
 ## How it works
 
-Nightshade applies a reversible `invert(1) hue-rotate(180deg)` filter at `document_start`, then counter-inverts photos, videos, canvases, and multicolor inline SVG artwork to preserve their colors. Single-color inline SVG icons follow the page inversion so dark controls remain readable. Gradients, sprite references and complex SVGs are conservatively preserved. A pointer-transparent overlay provides extra dimming.
+Nightshade applies `invert(1) hue-rotate(180deg)` to the page and selectively counter-inverts media. It samples rendered backgrounds to avoid double-inverting sites that already use a dark theme. A small media classifier handles single-color interface icons, multicolor artwork, transparent logos, and dynamic page updates.
 
-The media classifier updates when an app inserts or recolors icons and stops observing while Nightshade is inactive. A small, named site-rule registry handles exceptions that cannot be inferred safely: for example, 1Password's transparent dark logo follows page inversion while its avatars remain preserved. This rule is limited to 1Password hostnames and the known logo filename pattern.
+The filter runs on the top document so embedded mail and document frames do not receive a second inversion.
 
-For inline SVGs explicitly labelled as a logo or wordmark, Nightshade can also brighten individual dark neutral shapes while preserving colored symbols and gradients. This handles Meta-style blue symbols with dark lettering without a site-specific rule. It leaves unlabelled artwork, light lettering, and ambiguous masked/embedded artwork alone. This is a conservative heuristic, not text recognition; unlabelled or image-based logos still need other handling.
+## Limitations
 
-Before keeping the filter, it inspects author-owned body and root backgrounds plus representative opaque surfaces across the viewport. A clearly dark page or an author-declared dark `color-scheme` is left untouched unless the user explicitly enables Nightshade for that hostname. Delayed checks cover app shells such as Gmail that paint their theme after initial load. The popup always identifies the effective state and its source: global default, explicit site rule, timed pause, or native-dark auto-detection. When this automatic escape hatch is active, the site switch is relabeled **Force Nightshade anyway**.
+- Chrome internal pages, the Chrome Web Store, and some protected sign-in or PDF surfaces cannot be modified by extensions.
+- Local files require **Allow access to file URLs** on Nightshade's extension card.
+- CSS background images, shadow DOM, canvas-heavy apps, and mixed light/dark layouts can still need a site override.
+- Filtered colors are not color-accurate. Disable Nightshade for color-critical work.
+- Whole-page filters can increase GPU use on complex pages.
 
-The filter runs only on the top document. Embedded mail and document frames inherit that single filter instead of receiving a second inversion.
+Please report rendering problems with a public URL or a minimal synthetic example. Remove personal information from screenshots and never attach a saved authenticated webpage.
 
-Settings use Chrome Sync storage. No browsing history, page content, or account data is collected or transmitted.
+Report security and privacy vulnerabilities through the private process in [SECURITY.md](SECURITY.md).
 
-The popup's pause slider is a hard global override, including for sites that were explicitly enabled. Open pages resume automatically when the timer expires, or immediately when **Resume now** is clicked.
+## Development
 
-Open **Extension settings** from the popup to review or change global defaults and see every explicit per-site rule. The settings page labels rules as **Forced on**, **Excluded**, or **Follows default**, shows dimming and media overrides, and can remove obsolete rules. Automatically detected native-dark sites are evaluated live and are not retained as browsing history.
+```sh
+npm test             # Node regression tests
+npm run build         # Unpacked extension and release ZIP
+npm run test:browser  # Local visual regression gallery on port 8769
+```
 
-## Common failure modes
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the regression-fixture workflow. CI runs the tests, validates the release ZIP, and uploads it as a workflow artifact. Pushing a version tag such as `v0.1.0` also creates a GitHub Release with the ZIP and SHA-256 checksum.
 
-| Symptom | Smallest correction |
-| --- | --- |
-| A native dark site is inverted into a pale page | Nightshade should now auto-skip it. If a site uses an unusual transparent shell, turn it off for that hostname. |
-| An embedded email or document keeps the wrong theme | Nightshade filters the top document once so nested frames do not double-invert. |
-| A narrow page leaves bright outer gutters | Nightshade pre-inverts its fallback background so transparent layouts, including Hacker News, finish dark. |
-| A bright photo, video, chart, or map remains distracting | Disable **Preserve photo and video colors** or increase **Extra dimming**. |
-| A CSS background logo looks strange | Exclude the site; generic CSS cannot safely isolate every background image from its surrounding element. |
-| Dark SVG controls disappear into the background | Single-color inline SVGs now follow page inversion. Multicolor artwork remains preserved; report unresolved sprite or image-based icons with a minimal example. |
-| The extension seems unchanged after rebuilding | Reload the extension and then refresh the website tab. |
-| A canvas-heavy app feels slower | Exclude that hostname; full-page filters can be GPU-intensive. |
-| Colors are safety-critical | Disable Nightshade for that site. The filtered result is not color-accurate. |
+## Privacy
 
-## Regression testing
+Nightshade has no server and does not send page contents, browsing history, or analytics to the developer. Settings are stored through Chrome Sync and may be synchronized by Chrome according to the browser account's settings. See [PRIVACY.md](PRIVACY.md).
 
-Run `npm test` for settings, native-theme and media-policy tests. Run `npm run test:browser`, then open `http://127.0.0.1:8769` in an isolated browser for the self-running regression gallery. It exercises shipping scripts and CSS using synthetic pages, including 1Password-style icons, Google/Gmail dark detection, Hacker News gutters, dynamic icons, media preservation, pauses and per-site overrides. The gallery reports assertions and shows each rendered case for visual review.
+## License
 
-No saved account pages or private screenshots are included. See [the testing plan and code evaluation](docs/testing-and-engine-review.md) for the coverage matrix, limitations and proposed next steps.
+[MIT](LICENSE)

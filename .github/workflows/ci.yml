@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Run regression tests
+        run: npm test
+
+      - name: Build extension
+        run: npm run build
+
+      - name: Verify archive
+        run: |
+          unzip -t dist/nightshade-dark-mode.zip
+          unzip -Z1 dist/nightshade-dark-mode.zip > dist/archive-entries.txt
+          grep -Fx 'manifest.json' dist/archive-entries.txt
+
+      - name: Verify release tag matches extension version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          version="$(node -p "JSON.parse(require('fs').readFileSync('src/manifest.json')).version")"
+          test "$GITHUB_REF_NAME" = "v$version"
+
+      - name: Upload extension ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightshade-dark-mode-${{ github.sha }}
+          path: dist/nightshade-dark-mode.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download validated ZIP
+        uses: actions/download-artifact@v5
+        with:
+          name: nightshade-dark-mode-${{ github.sha }}
+
+      - name: Create checksum
+        run: sha256sum nightshade-dark-mode.zip > nightshade-dark-mode.zip.sha256
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME"
+          nightshade-dark-mode.zip
+          nightshade-dark-mode.zip.sha256
+          --verify-tag
+          --generate-notes
+          --title "Nightshade $GITHUB_REF_NAME"

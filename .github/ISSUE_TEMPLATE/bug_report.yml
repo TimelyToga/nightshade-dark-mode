@@ -1,0 +1,73 @@
+name: Bug report
+description: Report a rendering, performance, popup, or settings problem
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not attach saved authenticated webpages, credentials, cookies, private URLs, or unredacted personal information.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Page appearance
+        - Media or icon colors
+        - Native dark-mode detection
+        - Popup or settings
+        - Performance
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: url
+    attributes:
+      label: Public URL
+      description: Leave blank if the page is private or requires an account.
+      placeholder: https://example.com/
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: Nightshade 0.1.0; Chrome 140; macOS 27
+    validations:
+      required: true
+
+  - type: textarea
+    id: state
+    attributes:
+      label: Nightshade state
+      description: Include the effective state shown in the popup, dimming, and media-preservation setting.
+      placeholder: On — following global default; 10% dimming; preserve media enabled
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal reproduction
+      description: Describe the steps or paste a small synthetic HTML/SVG example.
+
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed personal information and did not attach a saved authenticated webpage.
+          required: true
