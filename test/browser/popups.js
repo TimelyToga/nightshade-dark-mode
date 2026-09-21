@@ -8,6 +8,7 @@ const specs = [
   { id: "default-off", title: "Auto · global default off", host: "example.org", global: false },
   { id: "never", title: "Never · excluded site", host: "example.net", site: { enabled: false } }
 ];
+const screenshotState = new URLSearchParams(location.search).get("screenshot");
 const wait = (ms = 80) => new Promise((r) => setTimeout(r, ms));
 const assert = (value, message) => { if (!value) throw new Error(message); };
 let pass = 0, fail = 0;
@@ -29,6 +30,12 @@ async function run(spec, markup) {
   const w = frame.contentWindow, d = frame.contentDocument;
   const $ = (id) => d.getElementById(id);
   const choose = async (mode) => { d.querySelector(`input[value="${mode}"]`).click(); await wait(); };
+  if (screenshotState) {
+    if (spec.expanded) $("appearance-toggle").click();
+    frame.style.height = `${d.body.scrollHeight + 2}px`;
+    document.getElementById("summary").textContent = "Shipping popup · simulated site state";
+    return;
+  }
   try {
     if (spec.id === "light") {
       assert($("state-title").textContent === "Darkening this page", "Active page misreported");
@@ -83,6 +90,7 @@ async function run(spec, markup) {
 }
 (async () => {
   const markup = await (await fetch("/src/popup.html")).text();
-  for (const spec of specs) await run(spec, markup);
+  for (const spec of specs.filter((spec) => !screenshotState || spec.id === screenshotState)) await run(spec, markup);
+  if (screenshotState) return;
   document.getElementById("summary").textContent = `${pass} passed · ${fail} failed · popup interaction scenarios`;
 })();

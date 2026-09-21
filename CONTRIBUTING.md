@@ -16,12 +16,14 @@ Do not attach saved authenticated webpages, credentials, cookies, account export
 
 ## Development
 
-Nightshade uses plain JavaScript and has no package dependencies.
+Nightshade uses plain JavaScript and has no package dependencies. Install Node.js 24 and the `zip` command.
 
 ```sh
 npm test
 npm run build
 ```
+
+Load `dist/nightshade-dark-mode` as an unpacked extension. The build also creates `dist/nightshade-dark-mode.zip`.
 
 To inspect the browser fixtures:
 
@@ -30,6 +32,8 @@ npm run test:browser
 ```
 
 Open `http://127.0.0.1:8769` in an isolated browser. The page runs assertions against the shipping scripts and CSS and displays each synthetic case.
+
+Open `/test/browser/popups.html` for popup interaction checks. [Screenshot fixtures](docs/screenshots/README.md) reproduce the README's visual examples.
 
 ## Regression fixtures
 
