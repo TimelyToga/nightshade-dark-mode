@@ -1,4 +1,6 @@
 const cases = [
+  { id: "startup-native", title: "Startup: native dark never inverted to white", root: "#202124", body: "transparent", skip: true, startup: true },
+  { id: "startup-light", title: "Startup: light content guarded until settings arrive", body: "white", startup: true },
   { id: "docs-canvas", title: "Docs: transparent document text canvas", body: "white", documentCanvas: true },
   { id: "mixed-logo", title: "Meta pattern: blue gradient + dark wordmark", body: "white", logo: true },
   { id: "mixed-art", title: "Same palette in unlabelled artwork: preserve", body: "white", logo: true, unlabelled: true },
@@ -54,12 +56,13 @@ async function run(spec) {
     ${spec.logo ? mixedLogo(spec) : ""}
     ${spec.documentCanvas ? '<canvas id="document-tile" class="kix-canvas-tile-content" width="360" height="110"></canvas><canvas id="ordinary-canvas" width="80" height="40"></canvas>' : ""}
     <p>Readable text and controls</p><button>Example action</button></main>
-    <script>window.chrome={storage:{sync:{get:async()=>(${JSON.stringify(settings)})},onChanged:{addListener(fn){window.changeSettings=fn}}},runtime:{onMessage:{addListener(){}}}};<\/script>
+    <script>window.chrome={storage:{sync:{get:async()=>{${spec.startup ? 'await new Promise(resolve=>setTimeout(resolve,250));' : ''}return (${JSON.stringify(settings)})}},onChanged:{addListener(fn){window.changeSettings=fn}}},runtime:{onMessage:{addListener(){}}}};
+    ${spec.startup ? `window.startupFrames=[];const start=performance.now();function sample(){startupFrames.push({filter:getComputedStyle(document.documentElement).filter,visibility:getComputedStyle(document.body).visibility,ready:document.documentElement.dataset.nightshadeReady});if(performance.now()-start<600)requestAnimationFrame(sample)}requestAnimationFrame(sample);` : ''}<\/script>
     <script src="/src/media.js"><\/script>
     ${spec.documentCanvas ? '<script>const create = NightshadeMedia.createController; NightshadeMedia.createController = (doc) => create(doc, "docs.google.com", "/document/d/synthetic/preview");<\/script>' : ''}
     <script src="/src/content.js"><\/script></body></html>`;
   await new Promise((resolve) => frame.addEventListener("load", resolve, { once: true }));
-  await wait(120);
+  await wait(spec.startup ? 650 : 120);
   const win = frame.contentWindow;
   const doc = frame.contentDocument;
   const filter = (selector) => win.getComputedStyle(doc.querySelector(selector)).filter;
@@ -68,6 +71,12 @@ async function run(spec) {
     check(doc.documentElement.dataset.nightshadeActive === String(active), "Effective active state is wrong");
     check(doc.documentElement.dataset.nightshadeAutoSkipped === String(!!spec.skip), "Native-dark skip state is wrong");
     check((filter("html") !== "none") === active, "Actual root filter does not match state");
+    if (spec.startup) {
+      check(win.startupFrames.some(f => !f.ready && f.visibility === "hidden"), "Startup guard not observed");
+      check(win.startupFrames.some(f => f.ready && f.visibility === "visible"), "Startup guard not released");
+      if (spec.skip) check(win.startupFrames.every(f => f.filter === "none"), "Native dark page briefly inverted");
+      else check(win.startupFrames.every(f => f.visibility === "hidden" || f.filter !== "none"), "Light page exposed without darkening");
+    }
     if (spec.documentCanvas) {
       const tile = doc.querySelector("#document-tile");
       const paint = (canvas) => {

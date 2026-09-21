@@ -13,6 +13,29 @@ let currentSettings = DEFAULTS;
 let autoSkippedForNativeDarkMode = false;
 let nativeDarkCheckTimers = [];
 let globalResumeTimer;
+const themeKey = `nightshade:theme:${hostname}`;
+const themeMaxAge = 30 * 24 * 60 * 60 * 1000;
+let rememberedTheme;
+let startupFinished = false;
+let loadingFinished = document.readyState === "complete";
+
+function readThemeMemory() {
+  if (!chrome.storage.local || chrome.extension?.inIncognitoContext) return Promise.resolve();
+  return chrome.storage.local.get(themeKey).then((data) => {
+    const entry = data[themeKey];
+    if (!startupFinished && typeof entry?.dark === "boolean" &&
+        Number.isFinite(entry.at) && Date.now() - entry.at >= 0 && Date.now() - entry.at < themeMaxAge) {
+      rememberedTheme = entry.dark;
+    }
+  }).catch(() => {});
+}
+
+function rememberTheme(dark) {
+  if (!chrome.storage.local || chrome.extension?.inIncognitoContext || location.protocol === "file:") return;
+  if (rememberedTheme === dark) return;
+  rememberedTheme = dark;
+  chrome.storage.local.set({ [themeKey]: { dark, at: Date.now() } }).catch(() => {});
+}
 
 function clampDim(value) {
   const number = Number(value);
@@ -91,9 +114,9 @@ function pageAlreadyLooksDark() {
       : null;
     const rootStyle = getComputedStyle(root);
     const rootLuminance = colorLuminance(rootStyle.backgroundColor);
-    const authorDeclaresDarkScheme = rootStyle.colorScheme
-      .split(/\s+/)
-      .includes("dark");
+    // "light dark" advertises support, not which theme is currently painted.
+    const authorDeclaresDarkScheme = rootStyle.colorScheme.split(/\s+/).includes("dark") &&
+      !rootStyle.colorScheme.split(/\s+/).includes("light");
     const surfaceLuminances = viewportSurfaceLuminances();
     const sampledSurfaceLooksDark = surfaceLuminances.length >= 4 &&
       surfaceLuminances.filter((luminance) => luminance < 0.22).length * 3 >=
@@ -139,8 +162,15 @@ function renderEffectiveSettings() {
 }
 
 function checkForNativeDarkMode() {
-  const { effective, explicitlyEnabled } = renderEffectiveSettings();
-  const shouldSkip = effective.enabled && !effective.paused && !explicitlyEnabled && pageAlreadyLooksDark();
+  if (!startupFinished) return;
+  const effective = settingsForThisSite(currentSettings);
+  const explicitlyEnabled = typeof currentSettings.sites[hostname]?.enabled === "boolean";
+  let shouldSkip = false;
+  if (effective.enabled && !effective.paused && !explicitlyEnabled) {
+    const dark = !loadingFinished && rememberedTheme !== undefined ? rememberedTheme : pageAlreadyLooksDark();
+    shouldSkip = dark;
+    if (loadingFinished) rememberTheme(dark);
+  }
   if (shouldSkip !== autoSkippedForNativeDarkMode) {
     autoSkippedForNativeDarkMode = shouldSkip;
     renderEffectiveSettings();
@@ -168,7 +198,7 @@ function scheduleGlobalResume() {
   if (delay <= 0) return;
 
   globalResumeTimer = setTimeout(() => {
-    autoSkippedForNativeDarkMode = false;
+    checkForNativeDarkMode();
     renderEffectiveSettings();
     scheduleNativeDarkCheck();
     scheduleGlobalResume();
@@ -177,17 +207,56 @@ function scheduleGlobalResume() {
 
 function apply(settings) {
   currentSettings = normalize(settings);
-  autoSkippedForNativeDarkMode = false;
+  checkForNativeDarkMode();
   renderEffectiveSettings();
   scheduleNativeDarkCheck();
   scheduleGlobalResume();
 }
 
-chrome.storage.sync.get(DEFAULTS).then(apply).catch(() => apply(DEFAULTS));
+function finishStartup() {
+  if (startupFinished) return;
+  startupFinished = true;
+  // Release the guard for synchronous hit-testing before making the decision;
+  // the browser cannot paint between these statements and apply().
+  root.dataset.nightshadeReady = "true";
+  apply(currentSettings);
+}
+
+// Use a neutral dark frame until settings and the parser's first theme styles
+// are available. Never block a slow or broken page indefinitely.
+const startupDeadline = setTimeout(finishStartup, 500);
+Promise.all([
+  chrome.storage.sync.get(DEFAULTS).then((raw) => {
+    if (startupFinished) apply(raw); else currentSettings = normalize(raw);
+  }).catch(() => {}),
+  readThemeMemory()
+]).then(() => {
+  const effective = settingsForThisSite(currentSettings);
+  const explicit = typeof currentSettings.sites[hostname]?.enabled === "boolean";
+  if (document.readyState === "loading" && effective.enabled && !effective.paused && !explicit) {
+    document.addEventListener("DOMContentLoaded", finishStartup, { once: true });
+  } else finishStartup();
+});
+
+function finishLoading() {
+  if (loadingFinished) return;
+  loadingFinished = true;
+  if (startupFinished) {
+    checkForNativeDarkMode();
+    scheduleNativeDarkCheck();
+  }
+}
+window.addEventListener?.("load", finishLoading, { once: true });
+// Some pages never finish loading; do not pin a stale cache indefinitely.
+setTimeout(finishLoading, 10000);
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== "sync") return;
-  chrome.storage.sync.get(DEFAULTS).then(apply).catch(() => apply(currentSettings));
+  chrome.storage.sync.get(DEFAULTS).then((raw) => {
+    startupFinished = true;
+    clearTimeout(startupDeadline);
+    apply(raw);
+  }).catch(() => {});
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {

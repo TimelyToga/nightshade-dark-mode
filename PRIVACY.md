@@ -8,13 +8,13 @@ Nightshade operates locally in the browser and has no developer-operated server,
 - Rendered colors and page elements, to detect an existing dark theme and preserve media colors.
 - User preferences: global enablement, pause time, dimming, media preservation, and explicit hostname rules.
 
-Page inspection happens in memory inside the current tab. Nightshade does not retain page contents or automatically detected hostnames.
+Page inspection happens in memory inside the current tab. To reduce loading flashes, Nightshade stores each domain's last detected light/dark theme and a timestamp in `chrome.storage.local`. Entries older than 30 days are ignored. This cache is not synced and is not read or written in incognito tabs. It contains no full URLs or page contents; it does reveal which domains have used automatic detection on this device.
 
 ## Storage and transmission
 
 Preferences are stored with `chrome.storage.sync`. Chrome may synchronize them through the signed-in browser account according to Chrome's own settings and privacy policy. Nightshade does not send them to the developer or any other service.
 
-Nightshade does not collect or sell personal information, browsing history, page contents, credentials, or usage analytics.
+Nightshade does not transmit or sell browsing history, page contents, credentials, or usage analytics. Local theme memory is only used to stabilize rendering on later visits.
 
 ## Permissions
 

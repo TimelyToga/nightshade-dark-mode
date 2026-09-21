@@ -16,6 +16,11 @@ async function renderWithPageColors({
   rootColorScheme = "normal",
   sampleColors = [],
   delayedSampleColors = null,
+  readyState = "complete",
+  cachedTheme,
+  incognito = false,
+  storageFails = false,
+  exercise,
   settings = { globalEnabled: true, disabledUntil: 0, dim: 10, preserveMedia: true, sites: {} }
 }) {
   const root = {
@@ -30,9 +35,15 @@ async function renderWithPageColors({
   let currentSampleColors = sampleColors;
   let sampleIndex = 0;
   const timers = [];
+  const events = {}, windowEvents = {}, writes = [];
   const context = {
     chrome: {
+      extension: { inIncognitoContext: incognito },
       storage: {
+        local: {
+          get: async () => { if (storageFails) throw Error("unavailable"); return { "nightshade:theme:example.test": cachedTheme }; },
+          set: async (value) => { writes.push(value); }
+        },
         sync: {
           get: async () => settings
         },
@@ -43,21 +54,21 @@ async function renderWithPageColors({
     document: {
       documentElement: root,
       body,
-      readyState: "complete",
+      readyState,
       getElementById: () => null,
       createElement: () => ({ setAttribute() {} }),
       elementFromPoint: () => {
-        const backgroundColor = currentSampleColors[sampleIndex++];
+        const backgroundColor = currentSampleColors[sampleIndex++ % currentSampleColors.length];
         return backgroundColor ? { backgroundColor, parentElement: body } : null;
       },
-      addEventListener() {}
+      addEventListener(name, callback) { events[name] = callback; }
     },
     location: { protocol: "https:", hostname: "example.test" },
     getComputedStyle: (element) => ({
       backgroundColor: element.backgroundColor ?? (element === body ? bodyColor : rootColor),
       colorScheme: element === root ? rootColorScheme : "normal"
     }),
-    window: { innerWidth: 1000, innerHeight: 800 },
+    window: { innerWidth: 1000, innerHeight: 800, addEventListener(name, callback) { windowEvents[name] = callback; } },
     requestAnimationFrame: (callback) => callback(),
     setTimeout: (callback, delay) => {
       timers.push({ callback, delay });
@@ -68,6 +79,7 @@ async function renderWithPageColors({
 
   vm.runInNewContext(contentScript, context);
   await new Promise((resolve) => setImmediate(resolve));
+  if (exercise) await exercise({ root, events, windowEvents, timers, writes, context });
   if (delayedSampleColors) {
     currentSampleColors = delayedSampleColors;
     sampleIndex = 0;
@@ -113,11 +125,97 @@ test("settings page exposes global defaults and per-site rules", () => {
   assert.match(popupMarkup, /id="open-settings"/);
   assert.match(optionsMarkup, /id="global-enabled"/);
   assert.match(optionsMarkup, /id="site-list"/);
-  assert.match(optionsMarkup, /Native-dark detection is live, not logged/);
+  assert.match(optionsMarkup, /Theme memory stays on this device/);
 });
 
 test("transparent page gutters become dark after root inversion", () => {
   assert.match(contentStyles, /background: #eee !important;/);
+});
+
+test("startup does not invert unknown pages and has a bounded guard", () => {
+  assert.doesNotMatch(contentStyles, /:root:not\(\[data-nightshade-ready\]\),\s*:root\[data-nightshade-active/);
+  assert.match(contentStyles, /nightshade-startup-release 0s 1s forwards/);
+});
+
+for (const dark of [true, false]) {
+  test(`remembered ${dark ? "dark" : "light"} theme stays stable until load, then updates`, async () => {
+    await renderWithPageColors({
+      bodyColor: dark ? "rgb(255, 255, 255)" : "rgb(20, 20, 20)", rootColor: "transparent",
+      readyState: "loading", cachedTheme: { dark, at: Date.now() },
+      exercise({ root, events, windowEvents, timers, writes, context }) {
+        assert.equal(root.dataset.nightshadeReady, undefined);
+        context.document.readyState = "interactive";
+        events.DOMContentLoaded();
+        assert.equal(root.dataset.nightshadeAutoSkipped, String(dark));
+        timers.find(t => t.delay === 2000).callback();
+        assert.equal(root.dataset.nightshadeAutoSkipped, String(dark));
+        assert.equal(writes.length, 0);
+        context.document.readyState = "complete";
+        windowEvents.load();
+        assert.equal(root.dataset.nightshadeAutoSkipped, String(!dark));
+        assert.equal(writes.at(-1)["nightshade:theme:example.test"].dark, !dark);
+      }
+    });
+  });
+}
+
+test("startup and stale theme memory have timeouts on a stalled page", async () => {
+  await renderWithPageColors({ bodyColor: "rgb(255, 255, 255)", rootColor: "transparent", readyState: "loading",
+    cachedTheme: { dark: true, at: Date.now() },
+    exercise({ root, timers }) {
+      timers.find(t => t.delay === 500).callback();
+      assert.equal(root.dataset.nightshadeReady, "true");
+      assert.equal(root.dataset.nightshadeAutoSkipped, "true");
+      timers.find(t => t.delay === 10000).callback();
+      assert.equal(root.dataset.nightshadeActive, "true");
+    }
+  });
+});
+
+test("expired theme memory is ignored", async () => {
+  const result = await renderWithPageColors({ bodyColor: "rgb(255, 255, 255)", rootColor: "transparent",
+    cachedTheme: { dark: true, at: Date.now() - 31 * 86400000 } });
+  assert.equal(result.nightshadeActive, "true");
+});
+
+test("theme memory cannot override manual rules or pause", async () => {
+  for (const [sites, disabledUntil, active] of [
+    [{ "example.test": { enabled: true } }, 0, "true"],
+    [{ "example.test": { enabled: false } }, 0, "false"],
+    [{ "example.test": { enabled: true } }, Date.now() + 60000, "false"]
+  ]) {
+    await renderWithPageColors({ bodyColor: "rgb(20, 20, 20)", rootColor: "transparent", readyState: "loading",
+      cachedTheme: { dark: true, at: Date.now() },
+      settings: { globalEnabled: true, disabledUntil, sites },
+      exercise({ root, events, writes }) {
+        events.DOMContentLoaded?.();
+        assert.equal(root.dataset.nightshadeActive, active);
+        assert.equal(root.dataset.nightshadeAutoSkipped, "false");
+        assert.equal(writes.length, 0);
+      }
+    });
+  }
+});
+
+test("incognito ignores theme memory and does not persist detection", async () => {
+  await renderWithPageColors({ bodyColor: "rgb(255, 255, 255)", rootColor: "transparent", incognito: true,
+    cachedTheme: { dark: true, at: Date.now() },
+    exercise({ root, writes }) {
+      assert.equal(root.dataset.nightshadeActive, "true");
+      assert.equal(writes.length, 0);
+    }
+  });
+});
+
+test("local storage failure does not strand the startup guard", async () => {
+  const result = await renderWithPageColors({ bodyColor: "rgb(255, 255, 255)", rootColor: "transparent", storageFails: true });
+  assert.equal(result.nightshadeReady, "true");
+  assert.equal(result.nightshadeActive, "true");
+});
+
+test("supporting both color schemes is not proof of native dark mode", async () => {
+  const result = await renderWithPageColors({ bodyColor: "rgb(255, 255, 255)", rootColor: "transparent", rootColorScheme: "light dark" });
+  assert.equal(result.nightshadeActive, "true");
 });
 
 test("light pages receive Nightshade", async () => {

@@ -1,8 +1,17 @@
 /*
- * The temporary selector prevents a white flash before synced settings arrive.
- * It is removed for sites that are explicitly turned off.
+ * Do not invert an unknown page: a native dark page would flash white.
+ * Hide content briefly while settings/theme memory arrive. JS releases this
+ * guard within 500ms; the CSS fallback releases it if startup fails entirely.
  */
-:root:not([data-nightshade-ready]),
+:root:not([data-nightshade-ready]):not([data-nightshade-detecting-native-dark="true"]) {
+  background: #111 !important;
+  color-scheme: dark !important;
+}
+:root:not([data-nightshade-ready]) > :not(head) {
+  visibility: hidden;
+  animation: nightshade-startup-release 0s 1s forwards !important;
+}
+@keyframes nightshade-startup-release { to { visibility: visible; } }
 :root[data-nightshade-active="true"] {
   filter: invert(1) hue-rotate(180deg) !important;
 }
@@ -11,7 +20,6 @@
  * Keep the no-flash background separate so JS can briefly reveal and inspect
  * the page author's root background when detecting an existing dark theme.
  */
-:root:not([data-nightshade-ready]):not([data-nightshade-detecting-native-dark="true"]),
 :root[data-nightshade-active="true"]:not([data-nightshade-detecting-native-dark="true"]) {
   /* This color is inverted with the root. A light source color produces dark
      gutters on transparent-body pages such as Hacker News. */
@@ -20,12 +28,6 @@
 }
 
 /* Undo the document inversion for content that normally has its own colors. */
-:root:not([data-nightshade-ready]) img:not([data-nightshade-media="theme"]),
-:root:not([data-nightshade-ready]) video,
-:root:not([data-nightshade-ready]) canvas:not([data-nightshade-media="theme"]),
-:root:not([data-nightshade-ready]) svg[data-nightshade-media="preserve"],
-:root:not([data-nightshade-ready]) object,
-:root:not([data-nightshade-ready]) embed,
 :root[data-nightshade-active="true"][data-nightshade-preserve-media="true"] img:not([data-nightshade-media="theme"]),
 :root[data-nightshade-active="true"][data-nightshade-preserve-media="true"] video,
 :root[data-nightshade-active="true"][data-nightshade-preserve-media="true"] canvas:not([data-nightshade-media="theme"]),
