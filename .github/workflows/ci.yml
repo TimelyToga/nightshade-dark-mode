@@ -41,7 +41,7 @@ jobs:
           test "$GITHUB_REF_NAME" = "v$version"
 
       - name: Upload extension ZIP
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nightshade-dark-mode-${{ github.sha }}
           path: dist/nightshade-dark-mode.zip
@@ -56,7 +56,7 @@ jobs:
       contents: write
     steps:
       - name: Download validated ZIP
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           name: nightshade-dark-mode-${{ github.sha }}
 
