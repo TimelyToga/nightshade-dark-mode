@@ -15,6 +15,12 @@
     return siteRules.find((rule) => rule.host.test(hostname) && rule.imagePath.test(pathname))?.id ?? null;
   }
 
+  function isThemeCanvas(hostname, pathname, canvas) {
+    return hostname?.toLowerCase() === "docs.google.com" &&
+      pathname?.startsWith("/document/") &&
+      canvas?.classList?.contains("kix-canvas-tile-content") === true;
+  }
+
   function classifySvg(svg) {
     // External sprites, gradients and complex illustrations are ambiguous:
     // preserve them rather than guessing at their internal palette.
@@ -73,7 +79,10 @@
     }
   }
 
-  function createController(document, hostname) {
+  function createController(document, hostname, routePathname) {
+    const pathname = routePathname ?? document.location?.pathname ?? (() => {
+      try { return new URL(document.baseURI).pathname; } catch { return ""; }
+    })();
     let observer;
     let frame;
     let enabled = false;
@@ -91,6 +100,9 @@
         } else {
           element.removeAttribute(attribute);
         }
+      } else if (element.localName === "canvas") {
+        if (isThemeCanvas(hostname, pathname, element)) element.setAttribute(attribute, "theme");
+        else element.removeAttribute(attribute);
       }
     }
     function scan(node) {
@@ -98,8 +110,8 @@
       let owner = node.closest("svg");
       while (owner?.parentElement?.closest("svg")) owner = owner.parentElement.closest("svg");
       if (owner) classify(owner);
-      if (node.matches("svg, img")) classify(node);
-      node.querySelectorAll("svg, img").forEach(classify);
+      if (node.matches("svg, img, canvas")) classify(node);
+      node.querySelectorAll("svg, img, canvas").forEach(classify);
     }
     function flush() {
       frame = undefined;
@@ -137,5 +149,5 @@
       }
     };
   }
-  globalThis.NightshadeMedia = { createController, imageRule, classifySvg, isDarkNeutral };
+  globalThis.NightshadeMedia = { createController, imageRule, classifySvg, isDarkNeutral, isThemeCanvas };
 })();

@@ -5,7 +5,23 @@ import test from "node:test";
 
 const context = { URL, getComputedStyle: (element) => element.style };
 vm.runInNewContext(fs.readFileSync(new URL("../src/media.js", import.meta.url), "utf8"), context);
-const { imageRule, classifySvg } = context.NightshadeMedia;
+const { imageRule, classifySvg, isThemeCanvas } = context.NightshadeMedia;
+
+function canvas(className) {
+  return { classList: { contains: (value) => value === className } };
+}
+
+test("Google Docs canvas exception is narrowly scoped", () => {
+  assert.equal(isThemeCanvas("docs.google.com", "/document/d/example/preview", canvas("kix-canvas-tile-content")), true);
+  for (const [host, pathname, className] of [
+    ["docs.google.com.attacker.test", "/document/d/example/preview", "kix-canvas-tile-content"],
+    ["sheets.google.com", "/document/d/example/preview", "kix-canvas-tile-content"],
+    ["docs.google.com", "/presentation/d/example/edit", "kix-canvas-tile-content"],
+    ["docs.google.com", "/document/d/example/preview", "ordinary-canvas"]
+  ]) {
+    assert.equal(isThemeCanvas(host, pathname, canvas(className)), false);
+  }
+});
 
 test("mixed-logo repair selects dark neutral paint without changing brand blue", () => {
   const { isDarkNeutral } = context.NightshadeMedia;

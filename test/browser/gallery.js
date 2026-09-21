@@ -1,4 +1,5 @@
 const cases = [
+  { id: "docs-canvas", title: "Docs: transparent document text canvas", body: "white", documentCanvas: true },
   { id: "mixed-logo", title: "Meta pattern: blue gradient + dark wordmark", body: "white", logo: true },
   { id: "mixed-art", title: "Same palette in unlabelled artwork: preserve", body: "white", logo: true, unlabelled: true },
   { id: "light-logo", title: "Light wordmark: no extra inversion", body: "white", logo: true, lightWordmark: true },
@@ -51,9 +52,12 @@ async function run(spec) {
     ${spec.icons ? '<img id="logo" width="48" height="48" src="/test/browser/1password-logo-a123.svg">' + icon : ""}
     ${spec.art ? illustration + '<img id="photo" width="60" height="40" src="data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'60\' height=\'40\'%3E%3Cpath fill=\'%233388cc\' d=\'M0 0h60v40H0z\'/%3E%3C/svg%3E">' : ""}
     ${spec.logo ? mixedLogo(spec) : ""}
+    ${spec.documentCanvas ? '<canvas id="document-tile" class="kix-canvas-tile-content" width="360" height="110"></canvas><canvas id="ordinary-canvas" width="80" height="40"></canvas>' : ""}
     <p>Readable text and controls</p><button>Example action</button></main>
     <script>window.chrome={storage:{sync:{get:async()=>(${JSON.stringify(settings)})},onChanged:{addListener(fn){window.changeSettings=fn}}},runtime:{onMessage:{addListener(){}}}};<\/script>
-    <script src="/src/media.js"><\/script><script src="/src/content.js"><\/script></body></html>`;
+    <script src="/src/media.js"><\/script>
+    ${spec.documentCanvas ? '<script>const create = NightshadeMedia.createController; NightshadeMedia.createController = (doc) => create(doc, "docs.google.com", "/document/d/synthetic/preview");<\/script>' : ''}
+    <script src="/src/content.js"><\/script></body></html>`;
   await new Promise((resolve) => frame.addEventListener("load", resolve, { once: true }));
   await wait(120);
   const win = frame.contentWindow;
@@ -64,6 +68,46 @@ async function run(spec) {
     check(doc.documentElement.dataset.nightshadeActive === String(active), "Effective active state is wrong");
     check(doc.documentElement.dataset.nightshadeAutoSkipped === String(!!spec.skip), "Native-dark skip state is wrong");
     check((filter("html") !== "none") === active, "Actual root filter does not match state");
+    if (spec.documentCanvas) {
+      const tile = doc.querySelector("#document-tile");
+      const paint = (canvas) => {
+        const context = canvas.getContext("2d");
+        context.fillStyle = "black";
+        context.fillRect(4, 4, 12, 12);
+        context.font = "20px sans-serif";
+        context.fillText("Readable document text", 4, 45);
+        context.fillStyle = "#eeeeee";
+        context.fillRect(0, 60, 350, 50);
+        context.fillStyle = "green";
+        context.fillText("example code", 4, 90);
+      };
+      paint(tile);
+      doc.querySelector("#ordinary-canvas").getContext("2d").fillRect(0, 0, 80, 40);
+      check(filter("#document-tile") === "none", "Document text counter-inverted to black");
+      check(filter("#ordinary-canvas") !== "none", "Ordinary canvas no longer preserved");
+      const originalPixels = [...tile.getContext("2d").getImageData(4, 4, 1, 1).data].join();
+      check(originalPixels === "0,0,0,255", "Document pixels were modified");
+      tile.classList.remove("kix-canvas-tile-content");
+      await wait(80);
+      check(filter("#document-tile") !== "none", "Stale document classification remains");
+      tile.classList.add("kix-canvas-tile-content");
+      await wait(80);
+      check(filter("#document-tile") === "none", "Document classification not restored");
+      const late = tile.cloneNode();
+      late.id = "late-document-tile";
+      doc.querySelector("main").append(late);
+      await wait(80);
+      check(filter("#late-document-tile") === "none", "Lazy document page not classified");
+      late.remove();
+      win.chrome.storage.sync.get = async () => ({ ...settings, globalEnabled: false });
+      win.changeSettings({}, "sync");
+      await wait(80);
+      check(filter("html") === "none" && filter("#document-tile") === "none", "Disabling left document inverted");
+      win.chrome.storage.sync.get = async () => settings;
+      win.changeSettings({}, "sync");
+      await wait(80);
+      check(filter("#document-tile") === "none", "Re-enable lost document classification");
+    }
     if (spec.logo) {
       const shouldRepair = !spec.unlabelled && !spec.lightWordmark;
       check(filter("#mixed-logo") !== "none", "Brand artwork not preserved");

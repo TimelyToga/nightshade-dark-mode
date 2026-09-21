@@ -70,6 +70,8 @@ Nightshade applies `invert(1) hue-rotate(180deg)` to the page and selectively co
 
 The filter runs on the top document so embedded mail and document frames do not receive a second inversion.
 
+Google Docs document-text canvases follow the page inversion instead of photo preservation. This keeps transparent black text readable against the darkened page. Other canvases remain preserved; images drawn inside a Docs text canvas also change colors because they share the same rendering surface.
+
 ## Limitations
 
 - Chrome internal pages, the Chrome Web Store, and some protected sign-in or PDF surfaces cannot be modified by extensions.
