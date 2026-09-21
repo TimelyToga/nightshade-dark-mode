@@ -23,6 +23,19 @@ test("Google Docs canvas exception is narrowly scoped", () => {
   }
 });
 
+test("Sheets editor canvases follow the theme without changing unrelated canvases", () => {
+  const grid = { closest: (selector) => selector === "#docs-editor" ? {} : null };
+  assert.equal(isThemeCanvas("docs.google.com", "/spreadsheets/d/example/edit", grid), true);
+  assert.equal(isThemeCanvas("docs.google.com", "/spreadsheets/d/example/preview", grid), true);
+  for (const [host, path] of [
+    ["docs.google.com.attacker.test", "/spreadsheets/d/example/edit"],
+    ["example.test", "/spreadsheets/d/example/edit"],
+    ["docs.google.com", "/document/d/example/edit"],
+    ["docs.google.com", "/presentation/d/example/edit"]
+  ]) assert.equal(isThemeCanvas(host, path, grid), false);
+  assert.equal(isThemeCanvas("docs.google.com", "/spreadsheets/d/example/edit", { closest: () => null }), false);
+});
+
 test("mixed-logo repair selects dark neutral paint without changing brand blue", () => {
   const { isDarkNeutral } = context.NightshadeMedia;
   assert.equal(isDarkNeutral("rgb(28, 43, 51)"), true);

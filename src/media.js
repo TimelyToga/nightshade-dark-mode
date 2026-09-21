@@ -16,9 +16,15 @@
   }
 
   function isThemeCanvas(hostname, pathname, canvas) {
-    return hostname?.toLowerCase() === "docs.google.com" &&
-      pathname?.startsWith("/document/") &&
-      canvas?.classList?.contains("kix-canvas-tile-content") === true;
+    if (hostname?.toLowerCase() !== "docs.google.com") return false;
+    if (pathname?.startsWith("/document/")) {
+      return canvas?.classList?.contains("kix-canvas-tile-content") === true;
+    }
+    // Sheets paints cell backgrounds, text and headers into editor canvases.
+    // Preserving those as photos leaves a light grid beneath the dark toolbar.
+    // Keep canvases outside the editor (e.g. UI color pickers) untouched.
+    return pathname?.startsWith("/spreadsheets/") === true &&
+      !!canvas?.closest?.("#docs-editor");
   }
 
   function classifySvg(svg) {
@@ -144,7 +150,7 @@
         observer.observe(document.documentElement, {
           childList: true, subtree: true, attributes: true,
           // Exclude our own markers to avoid a feedback loop.
-          attributeFilter: ["src", "fill", "stroke", "style", "class", "opacity", "fill-opacity", "stroke-opacity", "aria-label", "aria-labelledby"]
+          attributeFilter: ["src", "fill", "stroke", "style", "class", "id", "opacity", "fill-opacity", "stroke-opacity", "aria-label", "aria-labelledby"]
         });
       }
     };

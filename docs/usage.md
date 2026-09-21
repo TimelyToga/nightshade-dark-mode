@@ -23,6 +23,8 @@ Nightshade applies `invert(1) hue-rotate(180deg)` to the top document and select
 
 Embedded frames are not independently inverted a second time. Google Docs document-text canvases follow the page inversion so black text remains readable; images drawn into the same canvas also invert.
 
+Google Sheets editor canvases also follow the page inversion, so the cell grid and row/column headers darken with the toolbar. This is presentation-only: stored cell values, formatting and exported files are unchanged. Displayed cell fills, conditional-format colors and charts sharing those canvases can shift; choose Never for color-critical spreadsheet work. Canvases outside the Sheets editor retain normal media preservation.
+
 ## Limitations
 
 - Chrome internal pages, the Web Store, and some protected sign-in/PDF surfaces cannot be modified.

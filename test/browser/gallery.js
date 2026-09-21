@@ -2,6 +2,7 @@ const cases = [
   { id: "startup-native", title: "Startup: native dark never inverted to white", root: "#202124", body: "transparent", skip: true, startup: true },
   { id: "startup-light", title: "Startup: light content guarded until settings arrive", body: "white", startup: true },
   { id: "docs-canvas", title: "Docs: transparent document text canvas", body: "white", documentCanvas: true },
+  { id: "sheets-canvas", title: "Sheets: cell grid, headers and selection", body: "white", documentCanvas: true, sheets: true },
   { id: "mixed-logo", title: "Meta pattern: blue gradient + dark wordmark", body: "white", logo: true },
   { id: "mixed-art", title: "Same palette in unlabelled artwork: preserve", body: "white", logo: true, unlabelled: true },
   { id: "light-logo", title: "Light wordmark: no extra inversion", body: "white", logo: true, lightWordmark: true },
@@ -54,12 +55,12 @@ async function run(spec) {
     ${spec.icons ? '<img id="logo" width="48" height="48" src="/test/browser/1password-logo-a123.svg">' + icon : ""}
     ${spec.art ? illustration + '<img id="photo" width="60" height="40" src="data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'60\' height=\'40\'%3E%3Cpath fill=\'%233388cc\' d=\'M0 0h60v40H0z\'/%3E%3C/svg%3E">' : ""}
     ${spec.logo ? mixedLogo(spec) : ""}
-    ${spec.documentCanvas ? '<canvas id="document-tile" class="kix-canvas-tile-content" width="360" height="110"></canvas><canvas id="ordinary-canvas" width="80" height="40"></canvas>' : ""}
+    ${spec.documentCanvas ? `<div ${spec.sheets ? 'id="docs-editor"' : ''}><canvas id="document-tile" class="${spec.sheets ? '' : 'kix-canvas-tile-content'}" width="360" height="110"></canvas></div><canvas id="ordinary-canvas" width="80" height="40"></canvas>` : ""}
     <p>Readable text and controls</p><button>Example action</button></main>
     <script>window.chrome={storage:{sync:{get:async()=>{${spec.startup ? 'await new Promise(resolve=>setTimeout(resolve,250));' : ''}return (${JSON.stringify(settings)})}},onChanged:{addListener(fn){window.changeSettings=fn}}},runtime:{onMessage:{addListener(){}}}};
     ${spec.startup ? `window.startupFrames=[];const start=performance.now();function sample(){startupFrames.push({filter:getComputedStyle(document.documentElement).filter,visibility:getComputedStyle(document.body).visibility,ready:document.documentElement.dataset.nightshadeReady});if(performance.now()-start<600)requestAnimationFrame(sample)}requestAnimationFrame(sample);` : ''}<\/script>
     <script src="/src/media.js"><\/script>
-    ${spec.documentCanvas ? '<script>const create = NightshadeMedia.createController; NightshadeMedia.createController = (doc) => create(doc, "docs.google.com", "/document/d/synthetic/preview");<\/script>' : ''}
+    ${spec.documentCanvas ? `<script>const create = NightshadeMedia.createController; NightshadeMedia.createController = (doc) => create(doc, "docs.google.com", "/${spec.sheets ? 'spreadsheets' : 'document'}/d/synthetic/preview");<\/script>` : ''}
     <script src="/src/content.js"><\/script></body></html>`;
   await new Promise((resolve) => frame.addEventListener("load", resolve, { once: true }));
   await wait(spec.startup ? 650 : 120);
@@ -91,22 +92,42 @@ async function run(spec) {
         context.fillText("example code", 4, 90);
       };
       paint(tile);
+      if (spec.sheets) {
+        const ctx = tile.getContext("2d");
+        ctx.fillStyle = "white"; ctx.fillRect(0, 0, 360, 110);
+        ctx.fillStyle = "#e8eaed"; ctx.fillRect(0, 0, 360, 25);
+        ctx.fillStyle = "black"; ctx.font = "14px sans-serif";
+        ctx.fillText("A                     B                      C", 15, 18);
+        ctx.fillText("Task 1              Example task        Ready", 8, 49);
+        ctx.fillText("Task 2              Another task        Open", 8, 79);
+        ctx.strokeStyle = "#bbb"; ctx.lineWidth = 1;
+        for (const x of [0, 100, 240, 359]) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 110); ctx.stroke(); }
+        for (const y of [25, 55, 85]) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(360, y); ctx.stroke(); }
+        ctx.strokeStyle = "#4285f4"; ctx.lineWidth = 2; ctx.strokeRect(1, 26, 98, 28);
+      }
       doc.querySelector("#ordinary-canvas").getContext("2d").fillRect(0, 0, 80, 40);
       check(filter("#document-tile") === "none", "Document text counter-inverted to black");
       check(filter("#ordinary-canvas") !== "none", "Ordinary canvas no longer preserved");
       const originalPixels = [...tile.getContext("2d").getImageData(4, 4, 1, 1).data].join();
-      check(originalPixels === "0,0,0,255", "Document pixels were modified");
-      tile.classList.remove("kix-canvas-tile-content");
+      check(originalPixels === (spec.sheets ? "232,234,237,255" : "0,0,0,255"), "Document pixels were modified");
+      if (spec.sheets) tile.parentElement.removeAttribute("id");
+      else tile.classList.remove("kix-canvas-tile-content");
       await wait(80);
       check(filter("#document-tile") !== "none", "Stale document classification remains");
-      tile.classList.add("kix-canvas-tile-content");
+      if (spec.sheets) tile.parentElement.id = "docs-editor";
+      else tile.classList.add("kix-canvas-tile-content");
       await wait(80);
       check(filter("#document-tile") === "none", "Document classification not restored");
       const late = tile.cloneNode();
       late.id = "late-document-tile";
-      doc.querySelector("main").append(late);
+      tile.parentElement.append(late);
       await wait(80);
       check(filter("#late-document-tile") === "none", "Lazy document page not classified");
+      if (spec.sheets) {
+        doc.querySelector("main").append(late);
+        await wait(80);
+        check(filter("#late-document-tile") !== "none", "Canvas moved out of editor still themed");
+      }
       late.remove();
       win.chrome.storage.sync.get = async () => ({ ...settings, globalEnabled: false });
       win.changeSettings({}, "sync");
