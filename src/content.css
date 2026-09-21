@@ -20,16 +20,16 @@
 }
 
 /* Undo the document inversion for content that normally has its own colors. */
-:root:not([data-nightshade-ready]) img,
+:root:not([data-nightshade-ready]) img:not([data-nightshade-media="theme"]),
 :root:not([data-nightshade-ready]) video,
 :root:not([data-nightshade-ready]) canvas,
-:root:not([data-nightshade-ready]) svg,
+:root:not([data-nightshade-ready]) svg[data-nightshade-media="preserve"],
 :root:not([data-nightshade-ready]) object,
 :root:not([data-nightshade-ready]) embed,
-:root[data-nightshade-active="true"][data-nightshade-preserve-media="true"] img,
+:root[data-nightshade-active="true"][data-nightshade-preserve-media="true"] img:not([data-nightshade-media="theme"]),
 :root[data-nightshade-active="true"][data-nightshade-preserve-media="true"] video,
 :root[data-nightshade-active="true"][data-nightshade-preserve-media="true"] canvas,
-:root[data-nightshade-active="true"][data-nightshade-preserve-media="true"] svg,
+:root[data-nightshade-active="true"][data-nightshade-preserve-media="true"] svg[data-nightshade-media="preserve"],
 :root[data-nightshade-active="true"][data-nightshade-preserve-media="true"] object,
 :root[data-nightshade-active="true"][data-nightshade-preserve-media="true"] embed {
   filter: invert(1) hue-rotate(180deg) !important;

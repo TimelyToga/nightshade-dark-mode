@@ -33,7 +33,9 @@ Chrome does not allow extensions to restyle its internal pages, the Chrome Web S
 
 ## How it works
 
-Nightshade applies a reversible `invert(1) hue-rotate(180deg)` filter at `document_start`, then applies the same filter to photos, videos, canvases, and SVGs so their intended colors are restored. A pointer-transparent overlay provides extra dimming.
+Nightshade applies a reversible `invert(1) hue-rotate(180deg)` filter at `document_start`, then counter-inverts photos, videos, canvases, and multicolor inline SVG artwork to preserve their colors. Single-color inline SVG icons follow the page inversion so dark controls remain readable. Gradients, sprite references and complex SVGs are conservatively preserved. A pointer-transparent overlay provides extra dimming.
+
+The media classifier updates when an app inserts or recolors icons and stops observing while Nightshade is inactive. A small, named site-rule registry handles exceptions that cannot be inferred safely: for example, 1Password's transparent dark logo follows page inversion while its avatars remain preserved. This rule is limited to 1Password hostnames and the known logo filename pattern.
 
 Before keeping the filter, it inspects author-owned body and root backgrounds plus representative opaque surfaces across the viewport. A clearly dark page or an author-declared dark `color-scheme` is left untouched unless the user explicitly enables Nightshade for that hostname. Delayed checks cover app shells such as Gmail that paint their theme after initial load. The popup always identifies the effective state and its source: global default, explicit site rule, timed pause, or native-dark auto-detection. When this automatic escape hatch is active, the site switch is relabeled **Force Nightshade anyway**.
 
@@ -54,6 +56,13 @@ Open **Extension settings** from the popup to review or change global defaults a
 | A narrow page leaves bright outer gutters | Nightshade pre-inverts its fallback background so transparent layouts, including Hacker News, finish dark. |
 | A bright photo, video, chart, or map remains distracting | Disable **Preserve photo and video colors** or increase **Extra dimming**. |
 | A CSS background logo looks strange | Exclude the site; generic CSS cannot safely isolate every background image from its surrounding element. |
+| Dark SVG controls disappear into the background | Single-color inline SVGs now follow page inversion. Multicolor artwork remains preserved; report unresolved sprite or image-based icons with a minimal example. |
 | The extension seems unchanged after rebuilding | Reload the extension and then refresh the website tab. |
 | A canvas-heavy app feels slower | Exclude that hostname; full-page filters can be GPU-intensive. |
 | Colors are safety-critical | Disable Nightshade for that site. The filtered result is not color-accurate. |
+
+## Regression testing
+
+Run `npm test` for settings, native-theme and media-policy tests. Run `npm run test:browser`, then open `http://127.0.0.1:8769` in an isolated browser for the self-running regression gallery. It exercises shipping scripts and CSS using synthetic pages, including 1Password-style icons, Google/Gmail dark detection, Hacker News gutters, dynamic icons, media preservation, pauses and per-site overrides. The gallery reports assertions and shows each rendered case for visual review.
+
+No saved account pages or private screenshots are included. See [the testing plan and code evaluation](docs/testing-and-engine-review.md) for the coverage matrix, limitations and proposed next steps.

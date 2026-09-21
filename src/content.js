@@ -8,6 +8,7 @@ const DEFAULTS = {
 
 const root = document.documentElement;
 const hostname = location.protocol === "file:" ? "__nightshade_local_files__" : location.hostname;
+const mediaController = globalThis.NightshadeMedia?.createController(document, hostname);
 let currentSettings = DEFAULTS;
 let autoSkippedForNativeDarkMode = false;
 let nativeDarkCheckTimers = [];
@@ -133,6 +134,7 @@ function renderEffectiveSettings() {
   root.style.setProperty("--nightshade-dim", String(effective.dim / 100));
 
   if (enabled) getOverlay();
+  mediaController?.setEnabled(enabled && effective.preserveMedia);
   return { effective, explicitlyEnabled };
 }
 
