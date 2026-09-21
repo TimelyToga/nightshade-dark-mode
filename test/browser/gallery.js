@@ -1,4 +1,5 @@
 const cases = [
+  { id: "slides", title: "Slides: document SVG, thumbnails and photos", body: "white", slides: true },
   { id: "startup-native", title: "Startup: native dark never inverted to white", root: "#202124", body: "transparent", skip: true, startup: true },
   { id: "startup-light", title: "Startup: light content guarded until settings arrive", body: "white", startup: true },
   { id: "docs-canvas", title: "Docs: transparent document text canvas", body: "white", documentCanvas: true },
@@ -55,12 +56,14 @@ async function run(spec) {
     ${spec.icons ? '<img id="logo" width="48" height="48" src="/test/browser/1password-logo-a123.svg">' + icon : ""}
     ${spec.art ? illustration + '<img id="photo" width="60" height="40" src="data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'60\' height=\'40\'%3E%3Cpath fill=\'%233388cc\' d=\'M0 0h60v40H0z\'/%3E%3C/svg%3E">' : ""}
     ${spec.logo ? mixedLogo(spec) : ""}
+    ${spec.slides ? `<div id="workspace-container"><svg id="slide" width="350" height="125" viewBox="0 0 350 125"><rect width="350" height="125" fill="white"/><text x="12" y="28" fill="black" font-size="22">Example slide</text><rect x="12" y="45" width="230" height="65" fill="#eee" stroke="#aaa"/><text x="20" y="72" fill="black">Readable table and text</text><svg x="260" y="10" width="20" height="20"><rect width="20" height="20" fill="blue"/></svg><image id="slide-photo" x="270" y="45" width="60" height="60" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Crect width='60' height='60' fill='%23ee7755'/%3E%3C/svg%3E"/></svg></div><div id="filmstrip"></div>${illustration}` : ''}
     ${spec.documentCanvas ? `<div ${spec.sheets ? 'id="docs-editor"' : ''}><canvas id="document-tile" class="${spec.sheets ? '' : 'kix-canvas-tile-content'}" width="360" height="110"></canvas></div><canvas id="ordinary-canvas" width="80" height="40"></canvas>` : ""}
     <p>Readable text and controls</p><button>Example action</button></main>
     <script>window.chrome={storage:{sync:{get:async()=>{${spec.startup ? 'await new Promise(resolve=>setTimeout(resolve,250));' : ''}return (${JSON.stringify(settings)})}},onChanged:{addListener(fn){window.changeSettings=fn}}},runtime:{onMessage:{addListener(){}}}};
     ${spec.startup ? `window.startupFrames=[];const start=performance.now();function sample(){startupFrames.push({filter:getComputedStyle(document.documentElement).filter,visibility:getComputedStyle(document.body).visibility,ready:document.documentElement.dataset.nightshadeReady});if(performance.now()-start<600)requestAnimationFrame(sample)}requestAnimationFrame(sample);` : ''}<\/script>
     <script src="/src/media.js"><\/script>
     ${spec.documentCanvas ? `<script>const create = NightshadeMedia.createController; NightshadeMedia.createController = (doc) => create(doc, "docs.google.com", "/${spec.sheets ? 'spreadsheets' : 'document'}/d/synthetic/preview");<\/script>` : ''}
+    ${spec.slides ? '<script>const create = NightshadeMedia.createController; NightshadeMedia.createController = doc => create(doc, "docs.google.com", "/presentation/d/synthetic/edit");<\/script>' : ''}
     <script src="/src/content.js"><\/script></body></html>`;
   await new Promise((resolve) => frame.addEventListener("load", resolve, { once: true }));
   await wait(spec.startup ? 650 : 120);
@@ -72,6 +75,38 @@ async function run(spec) {
     check(doc.documentElement.dataset.nightshadeActive === String(active), "Effective active state is wrong");
     check(doc.documentElement.dataset.nightshadeAutoSkipped === String(!!spec.skip), "Native-dark skip state is wrong");
     check((filter("html") !== "none") === active, "Actual root filter does not match state");
+    if (spec.slides) {
+      const slide = doc.querySelector("#slide");
+      check(filter("#slide") === "none", "Whole slide preserved instead of darkened");
+      check(filter("#slide svg") === "none", "Nested SVG double-inverted");
+      check(filter("#slide-photo") !== "none", "Embedded photo not preserved");
+      check(filter("#art") !== "none", "Unrelated artwork changed");
+      check(slide.querySelector("rect").getAttribute("fill") === "white", "Author slide formatting mutated");
+      const thumbnail = slide.cloneNode(true); thumbnail.id = "thumbnail";
+      thumbnail.querySelector("image").remove();
+      thumbnail.setAttribute("width", "90"); thumbnail.setAttribute("height", "32");
+      doc.querySelector("#filmstrip").append(thumbnail);
+      await wait(80);
+      check(filter("#thumbnail") === "none", "Lazy thumbnail not darkened");
+      doc.querySelector("main").append(thumbnail);
+      await wait(80);
+      check(filter("#thumbnail") !== "none" && !thumbnail.hasAttribute("data-nightshade-document"), "Moved SVG retained stale slide classification");
+      thumbnail.remove();
+      const canvas = doc.createElement("canvas"); canvas.id = "slide-canvas";
+      slide.parentElement.append(canvas);
+      await wait(80);
+      check(filter("#slide-canvas") === "none", "Slide canvas fallback not themed");
+      canvas.remove();
+      win.chrome.storage.sync.get = async () => ({ ...settings, preserveMedia: false });
+      win.changeSettings({}, "sync"); await wait(80);
+      check(filter("#slide-photo") === "none", "Media toggle ignored");
+      win.chrome.storage.sync.get = async () => ({ ...settings, globalEnabled: false });
+      win.changeSettings({}, "sync"); await wait(80);
+      check(filter("html") === "none" && filter("#slide-photo") === "none", "Disabled Slides still filtered");
+      win.chrome.storage.sync.get = async () => settings;
+      win.changeSettings({}, "sync"); await wait(80);
+      check(filter("#slide") === "none" && filter("#slide-photo") !== "none", "Slides not restored after re-enable");
+    }
     if (spec.startup) {
       check(win.startupFrames.some(f => !f.ready && f.visibility === "hidden"), "Startup guard not observed");
       check(win.startupFrames.some(f => f.ready && f.visibility === "visible"), "Startup guard not released");

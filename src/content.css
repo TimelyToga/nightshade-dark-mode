@@ -43,6 +43,13 @@
   filter: invert(1) hue-rotate(180deg) !important;
 }
 
+/* Slides SVGs contain a whole document, not just artwork. Theme the slide
+ * background/text together while counter-inverting separately addressable
+ * raster images. Canvas-baked photos cannot be separated this way. */
+:root[data-nightshade-active="true"][data-nightshade-preserve-media="true"] svg[data-nightshade-document="slides"] image {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
 /* The page root is inverted, so this child is inverted again to stay black. */
 #nightshade-extension-overlay {
   display: none;

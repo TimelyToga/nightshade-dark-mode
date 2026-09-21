@@ -25,6 +25,8 @@ Embedded frames are not independently inverted a second time. Google Docs docume
 
 Google Sheets editor canvases also follow the page inversion, so the cell grid and row/column headers darken with the toolbar. This is presentation-only: stored cell values, formatting and exported files are unchanged. Displayed cell fills, conditional-format colors and charts sharing those canvases can shift; choose Never for color-critical spreadsheet work. Canvases outside the Sheets editor retain normal media preservation.
 
+Google Slides SVG/canvas surfaces in the workspace, filmstrip and SVG viewer follow the page theme. SVG-embedded raster images retain their colors when media preservation is on. Vector artwork, gradients and canvas-baked images can still change colors, and already-dark slides may become light; choose Never to inspect the original design. These filters do not change saved slides or exports.
+
 ## Limitations
 
 - Chrome internal pages, the Web Store, and some protected sign-in/PDF surfaces cannot be modified.

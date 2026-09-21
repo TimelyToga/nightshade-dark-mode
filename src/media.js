@@ -17,6 +17,7 @@
 
   function isThemeCanvas(hostname, pathname, canvas) {
     if (hostname?.toLowerCase() !== "docs.google.com") return false;
+    if (isSlidesSurface(hostname, pathname, canvas)) return true;
     if (pathname?.startsWith("/document/")) {
       return canvas?.classList?.contains("kix-canvas-tile-content") === true;
     }
@@ -25,6 +26,12 @@
     // Keep canvases outside the editor (e.g. UI color pickers) untouched.
     return pathname?.startsWith("/spreadsheets/") === true &&
       !!canvas?.closest?.("#docs-editor");
+  }
+
+  function isSlidesSurface(hostname, pathname, element) {
+    return hostname?.toLowerCase() === "docs.google.com" &&
+      pathname?.startsWith("/presentation/") === true &&
+      !!element?.closest?.("#workspace-container, #filmstrip, .punch-filmstrip-thumbnail, .punch-viewer-svgpage-svgcontainer");
   }
 
   function classifySvg(svg) {
@@ -97,8 +104,11 @@
       // Only the outer SVG gets a filter; nested SVGs must not undo it again.
       if (element.localName === "svg") {
         if (element.parentElement?.closest("svg")) return;
-        const mode = classifySvg(element);
+        const slide = isSlidesSurface(hostname, pathname, element);
+        const mode = slide ? "theme" : classifySvg(element);
         element.setAttribute(attribute, mode);
+        if (slide) element.setAttribute("data-nightshade-document", "slides");
+        else element.removeAttribute("data-nightshade-document");
         themeLogoParts(element, mode);
       } else if (element.localName === "img") {
         if (imageRule(hostname, element.getAttribute("src") || "", document.baseURI)) {
@@ -155,5 +165,5 @@
       }
     };
   }
-  globalThis.NightshadeMedia = { createController, imageRule, classifySvg, isDarkNeutral, isThemeCanvas };
+  globalThis.NightshadeMedia = { createController, imageRule, classifySvg, isDarkNeutral, isThemeCanvas, isSlidesSurface };
 })();

@@ -7,6 +7,18 @@ const context = { URL, getComputedStyle: (element) => element.style };
 vm.runInNewContext(fs.readFileSync(new URL("../src/media.js", import.meta.url), "utf8"), context);
 const { imageRule, classifySvg, isThemeCanvas } = context.NightshadeMedia;
 
+test("Slides surfaces are restricted by host, route and document container", () => {
+  const { isSlidesSurface } = context.NightshadeMedia;
+  const surface = { closest: () => ({}) };
+  assert.equal(isSlidesSurface("docs.google.com", "/presentation/d/example/edit", surface), true);
+  assert.equal(isThemeCanvas("docs.google.com", "/presentation/d/example/edit", surface), true);
+  for (const [host, path, node] of [
+    ["docs.google.com.attacker.test", "/presentation/d/example/edit", surface],
+    ["docs.google.com", "/document/d/example/edit", surface],
+    ["docs.google.com", "/presentation/d/example/edit", { closest: () => null }]
+  ]) assert.equal(isSlidesSurface(host, path, node), false);
+});
+
 function canvas(className) {
   return { classList: { contains: (value) => value === className } };
 }
