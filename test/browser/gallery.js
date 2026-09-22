@@ -1,4 +1,5 @@
 const cases = [
+  { id: "gmail-late", title: "Gmail: dark inbox after startup checks expire", body: "transparent", surface: "white", lateInbox: true },
   { id: "slides", title: "Slides: document SVG, thumbnails and photos", body: "white", slides: true },
   { id: "startup-native", title: "Startup: native dark never inverted to white", root: "#202124", body: "transparent", skip: true, startup: true },
   { id: "startup-light", title: "Startup: light content guarded until settings arrive", body: "white", startup: true },
@@ -75,6 +76,22 @@ async function run(spec) {
     check(doc.documentElement.dataset.nightshadeActive === String(active), "Effective active state is wrong");
     check(doc.documentElement.dataset.nightshadeAutoSkipped === String(!!spec.skip), "Native-dark skip state is wrong");
     check((filter("html") !== "none") === active, "Actual root filter does not match state");
+    if (spec.lateInbox) {
+      await wait(6000);
+      doc.querySelector("main").style.background = "#202124";
+      doc.querySelector("main").style.color = "#eee";
+      await wait(600);
+      check(doc.documentElement.dataset.nightshadeAutoSkipped === "true" && filter("html") === "none", "Late native inbox remains inverted");
+      // Theme changes without navigation must also work in the other direction.
+      doc.querySelector("main").style.background = "white";
+      doc.querySelector("main").style.color = "#181818";
+      await wait(600);
+      check(filter("html") !== "none", "Native light theme not darkened");
+      doc.querySelector("main").style.background = "#202124";
+      doc.querySelector("main").style.color = "#eee";
+      await wait(600);
+      check(filter("html") === "none", "Repeated native theme change failed");
+    }
     if (spec.slides) {
       const slide = doc.querySelector("#slide");
       check(filter("#slide") === "none", "Whole slide preserved instead of darkened");

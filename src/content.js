@@ -18,6 +18,38 @@ const themeMaxAge = 30 * 24 * 60 * 60 * 1000;
 let rememberedTheme;
 let startupFinished = false;
 let loadingFinished = document.readyState === "complete";
+let themeMutationTimer;
+let themeObserver;
+
+function queueThemeCheck() {
+  const effective = settingsForThisSite(currentSettings);
+  if (!startupFinished || document.hidden || !effective.enabled || effective.paused ||
+      typeof currentSettings.sites[hostname]?.enabled === "boolean" || themeMutationTimer !== undefined) return;
+  // One check per batch, not a trailing debounce: busy apps must not starve
+  // detection. Only computed colors are inspected, never message contents.
+  themeMutationTimer = setTimeout(() => {
+    themeMutationTimer = undefined;
+    if (!document.hidden) checkForNativeDarkMode();
+  }, 250);
+}
+
+function watchThemeChanges() {
+  if (themeObserver || typeof MutationObserver !== "function") return;
+  themeObserver = new MutationObserver((mutations) => {
+    if (mutations.some((mutation) => mutation.target.id !== "nightshade-extension-overlay" &&
+        !(mutation.type === "childList" && [...mutation.addedNodes, ...mutation.removedNodes]
+          .every((node) => node.id === "nightshade-extension-overlay")))) queueThemeCheck();
+  });
+  themeObserver.observe(root, {
+    subtree: true, childList: true, attributes: true,
+    // Exclude our own detection/state attributes to avoid a feedback loop.
+    attributeFilter: ["class", "style", "bgcolor", "data-theme", "data-color-mode", "hidden"]
+  });
+  document.addEventListener("visibilitychange", queueThemeCheck);
+  document.addEventListener("load", queueThemeCheck, true);
+  window.addEventListener?.("pageshow", queueThemeCheck);
+  window.addEventListener?.("focus", queueThemeCheck);
+}
 
 function readThemeMemory() {
   if (!chrome.storage.local || chrome.extension?.inIncognitoContext) return Promise.resolve();
@@ -220,6 +252,7 @@ function finishStartup() {
   // the browser cannot paint between these statements and apply().
   root.dataset.nightshadeReady = "true";
   apply(currentSettings);
+  watchThemeChanges();
 }
 
 // Use a neutral dark frame until settings and the parser's first theme styles
@@ -256,6 +289,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     startupFinished = true;
     clearTimeout(startupDeadline);
     apply(raw);
+    watchThemeChanges();
   }).catch(() => {});
 });
 

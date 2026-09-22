@@ -35,8 +35,12 @@ async function renderWithPageColors({
   let currentSampleColors = sampleColors;
   let sampleIndex = 0;
   const timers = [];
-  const events = {}, windowEvents = {}, writes = [];
+  const events = {}, windowEvents = {}, writes = [], observers = [];
   const context = {
+    MutationObserver: class {
+      constructor(callback) { observers.push(callback); }
+      observe() {}
+    },
     chrome: {
       extension: { inIncognitoContext: incognito },
       storage: {
@@ -79,7 +83,7 @@ async function renderWithPageColors({
 
   vm.runInNewContext(contentScript, context);
   await new Promise((resolve) => setImmediate(resolve));
-  if (exercise) await exercise({ root, events, windowEvents, timers, writes, context });
+  if (exercise) await exercise({ root, events, windowEvents, timers, writes, context, observers });
   if (delayedSampleColors) {
     currentSampleColors = delayedSampleColors;
     sampleIndex = 0;
@@ -211,6 +215,45 @@ test("local storage failure does not strand the startup guard", async () => {
   const result = await renderWithPageColors({ bodyColor: "rgb(255, 255, 255)", rootColor: "transparent", storageFails: true });
   assert.equal(result.nightshadeReady, "true");
   assert.equal(result.nightshadeActive, "true");
+});
+
+test("late app shell corrects cached light detection after all startup checks", async () => {
+  await renderWithPageColors({ bodyColor: "rgb(255, 255, 255)", rootColor: "transparent",
+    cachedTheme: { dark: false, at: Date.now() },
+    exercise({ root, timers, context, observers, writes }) {
+      for (const delay of [500, 2000, 5000, 10000]) timers.find(t => t.delay === delay)?.callback();
+      assert.equal(root.dataset.nightshadeActive, "true");
+      context.document.body.backgroundColor = "rgb(20, 20, 20)";
+      const mutation = [{ type: "attributes", target: context.document.body }];
+      observers[0](mutation);
+      observers[0](mutation);
+      assert.equal(timers.filter(t => t.delay === 250).length, 1, "Mutations should be batched");
+      timers.find(t => t.delay === 250).callback();
+      assert.equal(root.dataset.nightshadeAutoSkipped, "true");
+      assert.equal(root.dataset.nightshadeActive, "false");
+      assert.equal(writes.at(-1)["nightshade:theme:example.test"].dark, true);
+      context.document.body.backgroundColor = "rgb(255, 255, 255)";
+      observers[0](mutation);
+      timers.filter(t => t.delay === 250).at(-1).callback();
+      assert.equal(root.dataset.nightshadeActive, "true", "Switching back to native light should resume darkening");
+    }
+  });
+});
+
+test("background tabs defer theme inspection until visible", async () => {
+  await renderWithPageColors({ bodyColor: "white", rootColor: "transparent",
+    exercise({ root, context, observers, timers, events }) {
+      context.document.hidden = true;
+      context.document.body.backgroundColor = "rgb(20, 20, 20)";
+      observers[0]([{ type: "attributes", target: context.document.body }]);
+      assert.equal(timers.filter(t => t.delay === 250).length, 0);
+      context.document.hidden = false;
+      events.visibilitychange();
+      timers.find(t => t.delay === 250).callback();
+      assert.equal(root.dataset.nightshadeAutoSkipped, "true");
+    }
+  });
+
 });
 
 test("supporting both color schemes is not proof of native dark mode", async () => {
