@@ -97,16 +97,48 @@ function settingsForThisSite(settings) {
   };
 }
 
+const colorLuminanceCache = new Map();
+let colorProbe;
+
 function colorLuminance(color) {
   if (typeof color !== "string") return null;
-  const values = color.match(/rgba?\(([^)]+)\)/i)?.[1].split(",").map(Number);
-  if (!values || values.length < 3 || (values[3] !== undefined && values[3] < 0.9)) return null;
+  if (colorLuminanceCache.has(color)) return colorLuminanceCache.get(color);
+  const rgb = /^rgba?\(([^)]+)\)$/i.exec(color);
+  let values;
+  if (rgb) {
+    const parts = rgb[1].split(/[,\s/]+/).filter(Boolean);
+    values = parts.map((part, index) => part.endsWith("%")
+      ? parseFloat(part) * (index < 3 ? 2.55 : 0.01) : Number(part));
+  } else {
+    // Let the browser convert modern computed CSS colors (oklch, color(srgb),
+    // display-p3...) to sRGB. This detached 1px canvas contains only a solid
+    // CSS background color, never page imagery, text, or account content.
+    try {
+      if (!colorProbe) {
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = 1;
+        colorProbe = canvas.getContext("2d", { willReadFrequently: true });
+      }
+      if (!colorProbe) return null;
+      colorProbe.clearRect(0, 0, 1, 1);
+      colorProbe.fillStyle = "rgba(0, 0, 0, 0)";
+      colorProbe.fillStyle = color;
+      colorProbe.fillRect(0, 0, 1, 1);
+      const pixel = colorProbe.getImageData(0, 0, 1, 1).data;
+      values = [pixel[0], pixel[1], pixel[2], pixel[3] / 255];
+    } catch { return null; }
+  }
+  if (values.length < 3 || values.some(value => !Number.isFinite(value)) ||
+      (values[3] !== undefined && values[3] < 0.9)) return null;
 
   const [red, green, blue] = values.map((value) => value / 255);
   const linear = [red, green, blue].map((value) =>
     value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
   );
-  return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+  const luminance = 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+  if (colorLuminanceCache.size >= 128) colorLuminanceCache.clear();
+  colorLuminanceCache.set(color, luminance);
+  return luminance;
 }
 
 function viewportSurfaceLuminances() {

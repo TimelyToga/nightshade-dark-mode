@@ -1,4 +1,8 @@
 const cases = [
+  { id: "linear-oklch", title: "Linear-style app: OKLCH native dark surfaces", body: "transparent", surface: "oklch(0.18 0.005 270)", skip: true },
+  { id: "linear-srgb", title: "Modern CSS: native dark color(srgb)", body: "color(srgb 0.07 0.07 0.07)", skip: true },
+  { id: "modern-light", title: "Modern CSS: light OKLCH still darkened", body: "oklch(0.97 0 0)" },
+  { id: "modern-alpha", title: "Modern CSS: transparent dark paint is not a dark page", body: "white", surface: "color(srgb 0 0 0 / 0.04)" },
   { id: "gmail-late", title: "Gmail: dark inbox after startup checks expire", body: "transparent", surface: "white", lateInbox: true },
   { id: "slides", title: "Slides: document SVG, thumbnails and photos", body: "white", slides: true },
   { id: "startup-native", title: "Startup: native dark never inverted to white", root: "#202124", body: "transparent", skip: true, startup: true },

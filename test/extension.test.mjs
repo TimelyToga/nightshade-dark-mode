@@ -279,6 +279,17 @@ test("native dark body backgrounds are skipped", async () => {
   assert.equal(result.nightshadeAutoSkipped, "true");
 });
 
+test("modern RGB syntax and percentages participate in native-dark detection", async () => {
+  for (const bodyColor of ["rgb(18 18 18)", "rgb(7% 7% 7% / 100%)", "rgba(18, 18, 18, 1)"]) {
+    const result = await renderWithPageColors({ bodyColor, rootColor: "rgba(0, 0, 0, 0)" });
+    assert.equal(result.nightshadeAutoSkipped, "true", bodyColor);
+  }
+  for (const bodyColor of ["rgb(95% 95% 95%)", "rgb(18 18 18 / 5%)", "rgb(NaN 0 0)"]) {
+    const result = await renderWithPageColors({ bodyColor, rootColor: "rgba(0, 0, 0, 0)" });
+    assert.equal(result.nightshadeActive, "true", bodyColor);
+  }
+});
+
 test("Google-style native dark root backgrounds are skipped", async () => {
   const result = await renderWithPageColors({
     bodyColor: "rgba(0, 0, 0, 0)",
