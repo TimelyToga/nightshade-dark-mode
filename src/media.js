@@ -34,6 +34,26 @@
       !!element?.closest?.("#workspace-container, #filmstrip, .punch-filmstrip-thumbnail, .punch-viewer-svgpage-svgcontainer");
   }
 
+  function isRechartsSurface(svg) {
+    return svg.classList?.contains("recharts-surface") === true &&
+      !!svg.closest?.(".recharts-wrapper");
+  }
+
+  function themeChartParts(svg, chart) {
+    const marker = "data-nightshade-chart-part";
+    svg.querySelectorAll(`[${marker}]`).forEach((part) => part.removeAttribute(marker));
+    if (!chart) return;
+    // Axes, grid and HTML labels follow the page theme. Preserve series colors
+    // with their value labels, plus embedded logos/images. Only the outermost
+    // selected part gets a filter, so nested series/images don't invert twice.
+    const parts = svg.querySelectorAll(".recharts-bar, .recharts-line, .recharts-area, .recharts-scatter, .recharts-pie, .recharts-radial-bar, .recharts-radar, .recharts-funnel, .recharts-label-list, svg, image");
+    for (const part of parts) {
+      if (!part.closest("defs") && !part.parentElement?.closest(`[${marker}]`)) {
+        part.setAttribute(marker, "preserve");
+      }
+    }
+  }
+
   function classifySvg(svg) {
     // External sprites, gradients and complex illustrations are ambiguous:
     // preserve them rather than guessing at their internal palette.
@@ -67,18 +87,22 @@
     return Math.max(...rgb) <= 80 && Math.max(...rgb) - Math.min(...rgb) <= 32;
   }
 
-  function isLabelledLogo(svg) {
+  function isLabelledLogo(svg, hostname) {
+    // Artificial Analysis embeds this unlabelled logo in its charts. The
+    // exact host and asset viewBox identify the mixed-color wordmark.
+    if (hostname?.toLowerCase() === "artificialanalysis.ai" &&
+        svg.getAttribute("viewBox") === "0 0 402 44") return true;
     const referenced = (svg.getAttribute("aria-labelledby") || "").split(/\s+/)
       .map((id) => svg.ownerDocument.getElementById(id)?.textContent || "").join(" ");
     const label = [svg.getAttribute("aria-label"), referenced, svg.querySelector("title")?.textContent].join(" ");
     return /\b(logo|wordmark)\b/i.test(label);
   }
 
-  function themeLogoParts(svg, mode) {
+  function themeLogoParts(svg, mode, hostname) {
     // Clear stale classifications after repainting, relabelling or DOM moves.
     svg.querySelectorAll("[data-nightshade-theme-part]")
       .forEach((shape) => shape.removeAttribute("data-nightshade-theme-part"));
-    if (mode !== "preserve" || !isLabelledLogo(svg)) return;
+    if (mode !== "preserve" || !isLabelledLogo(svg, hostname)) return;
     if (svg.querySelector("use, image, foreignObject, mask, clipPath, filter")) return;
     const shapes = svg.querySelectorAll(artwork);
     if (shapes.length > 128) return;
@@ -105,11 +129,15 @@
       if (element.localName === "svg") {
         if (element.parentElement?.closest("svg")) return;
         const slide = isSlidesSurface(hostname, pathname, element);
-        const mode = slide ? "theme" : classifySvg(element);
+        const chart = isRechartsSurface(element);
+        const mode = slide || chart ? "theme" : classifySvg(element);
         element.setAttribute(attribute, mode);
         if (slide) element.setAttribute("data-nightshade-document", "slides");
         else element.removeAttribute("data-nightshade-document");
-        themeLogoParts(element, mode);
+        if (chart) element.setAttribute("data-nightshade-chart", "recharts");
+        else element.removeAttribute("data-nightshade-chart");
+        themeChartParts(element, chart);
+        themeLogoParts(element, mode, hostname);
       } else if (element.localName === "img") {
         if (imageRule(hostname, element.getAttribute("src") || "", document.baseURI)) {
           element.setAttribute(attribute, "theme");

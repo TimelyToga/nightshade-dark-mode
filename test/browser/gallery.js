@@ -1,4 +1,5 @@
 const cases = [
+  { id: "recharts", title: "Charts: readable axes, preserved bars and tooltip above data", body: "white", chart: true },
   { id: "linear-oklch", title: "Linear-style app: OKLCH native dark surfaces", body: "transparent", surface: "oklch(0.18 0.005 270)", skip: true },
   { id: "linear-srgb", title: "Modern CSS: native dark color(srgb)", body: "color(srgb 0.07 0.07 0.07)", skip: true },
   { id: "modern-light", title: "Modern CSS: light OKLCH still darkened", body: "oklch(0.97 0 0)" },
@@ -35,6 +36,20 @@ function mixedLogo(spec) {
     <g fill="${spec.lightWordmark ? '#eeeeee' : '#1c2b33'}"><path id="wordmark" d="M72 38V10H78L86 25L94 10H100V38H94V21L86 35L78 21V38Z M108 10H132V16H114V21H128V27H114V32H132V38H108Z"/></g>
     </svg>`;
 }
+function chartFixture() {
+  // Match the observed Recharts structure: HTML tooltip before an SVG with
+  // patterned series, numeric labels, and HTML axis labels in foreignObject.
+  return `<div class="recharts-wrapper" style="position:relative;width:400px;height:220px">
+    <svg id="chart-watermark" viewBox="0 0 402 44" width="130" height="15" style="position:absolute;right:0;top:0"><rect width="30" height="40" fill="#7f4bf3"/><path id="chart-wordmark" fill="#000" d="M50 5H390V35H50Z"/></svg>
+    <div class="recharts-tooltip-wrapper" style="position:absolute;left:85px;top:35px;background:white;color:black;border:1px solid #aaa;padding:8px;font-size:12px">Example model<br>Intelligence Index: 53</div>
+    <svg id="chart" class="recharts-surface" width="400" height="220" style="display:block;margin:0">
+      <defs><pattern id="checker" width="10" height="10" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="#34a853"/><rect width="5" height="5" fill="#50c971"/></pattern></defs>
+      <g class="recharts-cartesian-grid"><line x1="20" x2="390" y1="100" y2="100" stroke="#ccc" stroke-dasharray="2 4"/></g>
+      <g id="series" class="recharts-bar"><rect x="35" y="25" width="50" height="140" fill="#cc785c"/><rect x="100" y="40" width="50" height="125" fill="url(#checker)"/><rect x="165" y="50" width="50" height="115" fill="#0089f4"/></g>
+      <g id="values" class="recharts-label-list"><text x="45" y="130" fill="white">58</text><text x="110" y="130" fill="white">53</text></g>
+      <g class="recharts-cartesian-axis-tick-label"><foreignObject x="35" y="180" width="220" height="30"><div xmlns="http://www.w3.org/1999/xhtml" id="axis-label" style="color:black">Readable model labels</div></foreignObject><svg id="chart-logo" x="300" y="180" width="30" height="20"><image id="chart-image" width="30" height="20" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='20'%3E%3Crect width='30' height='20' fill='%230089f4'/%3E%3C/svg%3E"/></svg></g>
+    </svg></div>`;
+}
 const defaults = { globalEnabled: true, disabledUntil: 0, dim: 0, preserveMedia: true, sites: {} };
 let passed = 0;
 let failed = 0;
@@ -47,6 +62,7 @@ async function run(spec) {
   title.textContent = spec.title;
   const frame = document.createElement("iframe");
   frame.title = spec.title;
+  if (spec.chart) frame.style.height = "390px";
   const result = document.createElement("p");
   result.className = "result";
   article.append(title, frame, result);
@@ -61,12 +77,14 @@ async function run(spec) {
     ${spec.icons ? '<img id="logo" width="48" height="48" src="/test/browser/1password-logo-a123.svg">' + icon : ""}
     ${spec.art ? illustration + '<img id="photo" width="60" height="40" src="data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'60\' height=\'40\'%3E%3Cpath fill=\'%233388cc\' d=\'M0 0h60v40H0z\'/%3E%3C/svg%3E">' : ""}
     ${spec.logo ? mixedLogo(spec) : ""}
+    ${spec.chart ? chartFixture() : ""}
     ${spec.slides ? `<div id="workspace-container"><svg id="slide" width="350" height="125" viewBox="0 0 350 125"><rect width="350" height="125" fill="white"/><text x="12" y="28" fill="black" font-size="22">Example slide</text><rect x="12" y="45" width="230" height="65" fill="#eee" stroke="#aaa"/><text x="20" y="72" fill="black">Readable table and text</text><svg x="260" y="10" width="20" height="20"><rect width="20" height="20" fill="blue"/></svg><image id="slide-photo" x="270" y="45" width="60" height="60" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Crect width='60' height='60' fill='%23ee7755'/%3E%3C/svg%3E"/></svg></div><div id="filmstrip"></div>${illustration}` : ''}
     ${spec.documentCanvas ? `<div ${spec.sheets ? 'id="docs-editor"' : ''}><canvas id="document-tile" class="${spec.sheets ? '' : 'kix-canvas-tile-content'}" width="360" height="110"></canvas></div><canvas id="ordinary-canvas" width="80" height="40"></canvas>` : ""}
     <p>Readable text and controls</p><button>Example action</button></main>
     <script>window.chrome={storage:{sync:{get:async()=>{${spec.startup ? 'await new Promise(resolve=>setTimeout(resolve,250));' : ''}return (${JSON.stringify(settings)})}},onChanged:{addListener(fn){window.changeSettings=fn}}},runtime:{onMessage:{addListener(){}}}};
     ${spec.startup ? `window.startupFrames=[];const start=performance.now();function sample(){startupFrames.push({filter:getComputedStyle(document.documentElement).filter,visibility:getComputedStyle(document.body).visibility,ready:document.documentElement.dataset.nightshadeReady});if(performance.now()-start<600)requestAnimationFrame(sample)}requestAnimationFrame(sample);` : ''}<\/script>
     <script src="/src/media.js"><\/script>
+    ${spec.chart ? '<script>const create = NightshadeMedia.createController; NightshadeMedia.createController = doc => create(doc, "artificialanalysis.ai");<\/script>' : ''}
     ${spec.documentCanvas ? `<script>const create = NightshadeMedia.createController; NightshadeMedia.createController = (doc) => create(doc, "docs.google.com", "/${spec.sheets ? 'spreadsheets' : 'document'}/d/synthetic/preview");<\/script>` : ''}
     ${spec.slides ? '<script>const create = NightshadeMedia.createController; NightshadeMedia.createController = doc => create(doc, "docs.google.com", "/presentation/d/synthetic/edit");<\/script>' : ''}
     <script src="/src/content.js"><\/script></body></html>`;
@@ -80,6 +98,34 @@ async function run(spec) {
     check(doc.documentElement.dataset.nightshadeActive === String(active), "Effective active state is wrong");
     check(doc.documentElement.dataset.nightshadeAutoSkipped === String(!!spec.skip), "Native-dark skip state is wrong");
     check((filter("html") !== "none") === active, "Actual root filter does not match state");
+    if (spec.chart) {
+      const chart = doc.querySelector("#chart");
+      check(filter("#chart") === "none" && filter("#axis-label") === "none", "Labels counter-inverted to black");
+      check(filter("#series") !== "none" && filter("#values") !== "none", "Data colors/value contrast not preserved");
+      check(filter("#chart-logo") !== "none" && filter("#chart-image") === "none", "Nested artwork double-inverted");
+      check(filter("#chart-watermark") !== "none" && filter("#chart-wordmark") !== "none", "Mixed chart wordmark lost contrast");
+      const tooltip = doc.querySelector(".recharts-tooltip-wrapper");
+      const rect = tooltip.getBoundingClientRect();
+      check(tooltip.contains(doc.elementFromPoint(rect.x + 12, rect.y + 12)), "Tooltip painted behind chart bars");
+      check(chart.querySelector("rect").getAttribute("fill") === "#34a853", "Author chart colors modified");
+      // Inserted series and class changes must not retain stale classifications.
+      doc.querySelector("#series").insertAdjacentHTML("beforeend", '<g id="nested-series" class="recharts-bar"><rect x="230" y="80" width="40" height="85" fill="red"/></g>');
+      await wait(80);
+      check(filter("#nested-series") === "none", "Nested series double-inverted");
+      chart.classList.remove("recharts-surface"); await wait(80);
+      check(!chart.hasAttribute("data-nightshade-chart") && filter("#series") === "none", "Stale chart filters remain");
+      chart.classList.add("recharts-surface"); await wait(80);
+      check(filter("#series") !== "none", "Chart classification not restored");
+      win.chrome.storage.sync.get = async () => ({ ...settings, preserveMedia: false });
+      win.changeSettings({}, "sync"); await wait(80);
+      check(filter("#series") === "none" && filter("#chart-logo") === "none", "Media toggle ignored for charts");
+      win.chrome.storage.sync.get = async () => ({ ...settings, globalEnabled: false });
+      win.changeSettings({}, "sync"); await wait(80);
+      check(filter("html") === "none" && win.getComputedStyle(tooltip).zIndex === "auto", "Chart overrides remain when disabled");
+      win.chrome.storage.sync.get = async () => settings;
+      win.changeSettings({}, "sync"); await wait(80);
+      check(filter("#series") !== "none", "Chart colors not restored after re-enable");
+    }
     if (spec.lateInbox) {
       await wait(6000);
       doc.querySelector("main").style.background = "#202124";

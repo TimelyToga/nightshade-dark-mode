@@ -29,6 +29,8 @@ Google Sheets editor canvases also follow the page inversion, so the cell grid a
 
 Google Slides SVG/canvas surfaces in the workspace, filmstrip and SVG viewer follow the page theme. SVG-embedded raster images retain their colors when media preservation is on. Vector artwork, gradients and canvas-baked images can still change colors, and already-dark slides may become light; choose Never to inspect the original design. These filters do not change saved slides or exports.
 
+Recharts charts (including Artificial Analysis) darken axes and labels while preserving series colors and value labels when media preservation is on. Hover tooltips stay above the plotted data. Other chart renderers still use the general artwork rules.
+
 ## Limitations
 
 - Chrome internal pages, the Web Store, and some protected sign-in/PDF surfaces cannot be modified.

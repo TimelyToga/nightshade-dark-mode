@@ -50,6 +50,18 @@
   filter: invert(1) hue-rotate(180deg) !important;
 }
 
+/* Charts mix data colors with interface labels. Keep the SVG itself unfiltered
+ * so its axes follow the page; preserve only series, values and embedded art. */
+:root[data-nightshade-active="true"][data-nightshade-preserve-media="true"] svg[data-nightshade-chart="recharts"] [data-nightshade-chart-part="preserve"] {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
+/* Recharts inserts its HTML tooltip before the SVG. Filters introduce stacking
+ * contexts, so give this positioned overlay an explicit local stacking order. */
+:root[data-nightshade-active="true"] .recharts-tooltip-wrapper {
+  z-index: 1000 !important;
+}
+
 /* The page root is inverted, so this child is inverted again to stay black. */
 #nightshade-extension-overlay {
   display: none;
